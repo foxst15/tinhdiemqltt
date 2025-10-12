@@ -20,7 +20,7 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: 'API key chưa được cấu hình trên server' });
     }
     
-    const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+    const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
     // 3. Gửi yêu cầu đến API của Google từ server
     const geminiResponse = await fetch(API_ENDPOINT, {
@@ -44,4 +44,5 @@ export default async function handler(request, response) {
     // 5. Nếu có lỗi, gửi thông báo lỗi về cho frontend
     response.status(500).json({ error: error.message });
   }
+
 }
