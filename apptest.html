@@ -1,0 +1,1449 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>QUẢN LÝ THÔNG TIN & ĐIỂM CHO SV (FOXSTUDIO)</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --text-color: #e2e8f0;
+            --card-bg: #1e293b;
+            --border-color: #334155;
+            --input-bg: #334155;
+            --input-border: #475569;
+            --accent-color: #0ea5e9;
+            --sidebar-bg: #1e293b;
+            --main-font-color: var(--text-color);
+        }
+
+        body.light-mode {
+            --bg-color: #f1f5f9;
+            --text-color: #0f172a;
+            /* Thay đổi màu nền thẻ và sidebar thành trong suốt */
+            --card-bg: rgba(255, 255, 255, 0.45); 
+            --sidebar-bg: rgba(255, 255, 255, 0.35);
+            /* Thay đổi màu viền */
+            --border-color: rgba(203, 213, 225, 0.5);
+            --input-bg: #e2e8f0;
+            --input-border: #cbd5e1;
+            --accent-color: #2563eb;
+            --main-font-color: var(--text-color);
+        }
+        /* CSS cho hiệu ứng Glassmorphism ở chế độ sáng */
+        body.light-mode .sidebar,
+        body.light-mode .modal-content,
+        body.light-mode .student-card,
+        body.light-mode .bg-card-bg {
+            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--main-font-color);
+            transition: background-color 0.3s, color 0.3s;
+            display: flex;
+        }
+
+        .custom-bg {
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+
+        .input-style {
+            width: 100%; padding: 0.625rem 1rem;
+            background-color: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 0.5rem; color: var(--main-font-color);
+            outline: none; transition: border-color .15s, box-shadow .15s;
+        }
+        .input-style:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 40%, transparent);
+        }
+        .input-style-sm {
+            width: 100%; padding: 0.5rem 0.75rem;
+            background-color: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 0.375rem; color: var(--main-font-color);
+            outline: none; font-size: 0.875rem; transition: border-color .15s, box-shadow .15s;
+        }
+        .input-style-sm:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-color) 40%, transparent);
+        }
+        .btn-primary {
+            display: flex; align-items: center; justify-content: center;
+            background-image: linear-gradient(to right, var(--accent-color), color-mix(in srgb, var(--accent-color) 70%, #06b6d4));
+            color: white; font-weight: 600; padding: 0.75rem 1rem; border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: all .3s;
+        }
+        .btn-primary[disabled] { opacity: .5; cursor: not-allowed; }
+        .btn-secondary {
+            display: flex; align-items: center; justify-content: center;
+            background-color: var(--secondary-color); color: var(--text-color);
+            font-weight: 600; padding: 0.75rem 1rem; border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .btn-outline-sky {
+            display: flex; align-items: center; justify-content: center;
+            color: var(--accent-color); padding: 0.75rem; border: 1px solid var(--accent-color);
+            border-radius: 0.375rem; transition: all .15s;
+        }
+        .btn-outline-sky:hover { background: rgba(56,189,248,.1); }
+        .btn-outline-red {
+            display: inline-flex; align-items: center; justify-content: center;
+            color: rgb(239 68 68 / 1); border: 1px solid rgb(239 68 68 / 1);
+            border-radius: 0.375rem; padding: 0.5rem 1rem; transition: all .15s; font-weight: 500;
+        }
+        .btn-outline-red:hover { background-color: rgba(239, 68, 68, 0.1); color: rgb(248 113 113 / 1); }
+        .btn-outline-blue {
+            display: inline-flex; align-items: center; justify-content: center;
+            color: rgb(59 130 246 / 1); border: 1px solid rgb(59 130 246 / 1);
+            border-radius: 0.375rem; padding: 0.5rem 1rem; transition: all .15s; font-weight: 500;
+        }
+        .btn-outline-blue:hover { background-color: rgba(59, 130, 246, 0.1); color: rgb(96 165 250 / 1); }
+        .btn-icon-danger { color: rgb(239 68 68 / 1); padding: 0.375rem; border-radius: 0.375rem; transition: all .15s; }
+        .btn-icon-danger:hover { color: rgb(248 113 113 / 1); background: rgba(239,68,68,.1); }
+        .btn-icon-edit { color: rgb(251 191 36); padding: 0.375rem; border-radius: 0.375rem; transition: all .15s; }
+        .btn-icon-edit:hover { color: rgb(253 224 71); background: rgba(251,191,36,.1); }
+        
+        .text-accent { color: var(--accent-color); }
+        .bg-card-bg { background-color: var(--card-bg); }
+        .border-main { border-color: var(--border-color); }
+        .text-main-font { color: var(--main-font-color); }
+        
+        .th-style { padding: 0.75rem 1rem; color: var(--main-font-color); opacity: 0.8; font-weight: 600; }
+        .td-style { padding: 0.875rem 1rem; color: var(--main-font-color); }
+        .course-table-wrap { overflow-x: auto; }
+        .course-table-wrap table { min-width: 600px; }
+
+        /* Sidebar Styles */
+        .sidebar {
+            background-color: var(--sidebar-bg);
+            transition: transform 0.3s ease-in-out;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+            z-index: 50;
+        }
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s, color 0.2s;
+            white-space: nowrap;
+        }
+        .sidebar-link.active {
+            background-color: var(--accent-color);
+            color: white;
+            font-weight: bold;
+        }
+        .sidebar-link:hover {
+            background-color: color-mix(in srgb, var(--accent-color) 15%, transparent);
+            color: var(--accent-color);
+        }
+        .sidebar-link.active:hover {
+            background-color: var(--accent-color);
+            color: white;
+        }
+        .sidebar-backdrop {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5); z-index: 40; display: none;
+        }
+        .sidebar-backdrop.active { display: block; }
+
+        /* Nút cố định */
+        .fixed-buttons {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .fixed-buttons button {
+            transition: transform 0.2s;
+        }
+        .fixed-buttons button:hover {
+            transform: scale(1.1);
+        }
+
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none; justify-content: center; align-items: center;
+            z-index: 100;
+        }
+        .modal-content {
+            background-color: var(--card-bg); padding: 2rem; border-radius: 0.75rem;
+            max-height: 90%; overflow-y: auto; max-width: 600px; width: 90%;
+            box-shadow: 0 10px 15px rgba(0,0,0,0.2);
+            position: relative;
+            color: var(--main-font-color);
+        }
+        .modal.show { display: flex; }
+        .modal-close-btn {
+            position: absolute; top: 1rem; right: 1rem; color: var(--text-color);
+            transition: color 0.2s;
+        }
+        .modal-close-btn:hover { color: var(--accent-color); }
+
+        /* Chatbot Styles */
+        .chatbot-container {
+            position: fixed; bottom: 6rem; right: 1rem; z-index: 100; width: 100%; max-width: 380px; height: 500px;
+            display: none; flex-direction: column; background-color: var(--card-bg);
+            border-radius: 0.75rem; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            transform-origin: bottom right; transform: scale(0.9); opacity: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        .chatbot-container.active { display: flex; transform: scale(1); opacity: 1; }
+        .chatbot-header {
+            background-image: linear-gradient(to right, var(--accent-color), color-mix(in srgb, var(--accent-color) 70%, #06b6d4));
+            color: white; padding: 1rem; border-radius: 0.75rem 0.75rem 0 0;
+            display: flex; justify-content: space-between; align-items: center; font-weight: 600; cursor: pointer;
+        }
+        .chatbot-messages { flex-grow: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; }
+        .message { max-width: 85%; padding: 0.6rem 0.9rem; border-radius: 1rem; word-wrap: break-word; line-height: 1.4; }
+        .user-message { background-color: #3b82f6; color: white; align-self: flex-end; border-bottom-right-radius: 0.25rem; }
+        .bot-message { background-color: var(--secondary-color); color: var(--text-color); align-self: flex-start; border-bottom-left-radius: 0.25rem; }
+
+        /* Print Styles */
+       /* Print Styles */
+        @media print {
+            body { background-color: white !important; color: black !important; padding: 0 !important; margin: 0 !important; }
+            
+            /* ĐÃ THÊM 'main' VÀO ĐÂY ĐỂ ẨN NỘI DUNG TRANG KHI IN */
+            header, main, .sidebar, .fixed-buttons, footer, .modal { display: none !important; }
+            
+            #printContent { display: block !important; position: static !important; width: 100% !important; }
+            .print-page { page-break-after: always; box-shadow: none !important; border: none !important; background-color: white !important; color: black !important; padding: 20px !important; }
+            .print-page:last-child { page-break-after: avoid; }
+            .print-title { text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #333 !important; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
+            .print-info { margin-bottom: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
+            .print-info p { line-height: 1.5; font-size: 14px; color: #555 !important; }
+            .print-info strong { color: black !important; }
+            .course-table-wrap table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            .course-table-wrap th, .course-table-wrap td { color: black !important; border: 1px solid #ddd !important; padding: 8px !important; text-align: center !important; font-size: 12px; }
+            .course-table-wrap th { background-color: #f2f2f2 !important; font-weight: bold; }
+            .gpa-info { display: block !important; margin-top: 20px; padding: 10px; border: 1px solid #ccc; background-color: #f8f8f8; }
+            .gpa-info span { color: black !important; }
+            .gpa-info .text-emerald-400 { color: #22c55e !important; }
+        }
+    </style>
+</head>
+
+<body class="flex">
+    <aside id="sidebar" class="sidebar fixed top-0 left-0 h-full w-64 bg-card-bg shadow-lg transform -translate-x-full md:translate-x-0 transition-transform duration-300 z-50">
+        <div class="p-4 flex items-center justify-between border-b border-main">
+            <h2 class="text-2xl font-bold text-accent">Menu</h2>
+            <button id="close-sidebar-btn" class="md:hidden text-2xl text-main-font leading-none">&times;</button>
+        </div>
+        <nav class="p-4 space-y-2">
+            <a href="#" class="sidebar-link active" data-tab="intro">
+                <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                Giới Thiệu
+            </a>
+            <a href="#" class="sidebar-link" data-tab="add-student">
+                 <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+                Thêm Sinh Viên
+            </a>
+            <a href="#" class="sidebar-link" data-tab="student-list">
+                 <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                Danh Sách SV
+            </a>
+            <a href="#" class="sidebar-link" data-tab="contact">
+                 <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                Liên Hệ
+            </a>
+        </nav>
+    </aside>
+    <div id="sidebar-backdrop" class="sidebar-backdrop md:hidden"></div>
+
+    <div class="flex-1 md:ml-64 transition-all duration-300 min-h-screen p-4 sm:p-6 flex flex-col items-center">
+        <header class="w-full max-w-4xl mx-auto p-4 flex flex-col sm:flex-row items-center justify-center text-center">
+            <button id="open-sidebar-btn" class="md:hidden fixed top-4 left-4 z-40 p-2 bg-card-bg rounded-md text-main-font">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+            <img src="https://uploads.onecompiler.io/43u4wb3ft/43unfu266/Black%20and%20White%20Circle%20Class%20Logo.png" alt="Logo" class="h-24 w-24 mb-4 sm:mb-0 sm:mr-4 rounded-xl">
+            <div>
+                <h1 class="text-4xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-300 py-2">QUẢN LÝ THÔNG TIN & ĐIỂM SV</h1>
+                <p class="text-sm text-gray-400 mt-1">BẢN THỬ NGHIỆM CỦA FOXSTUDIO</p>
+            </div>
+        </header>
+
+        <main id="tab-content" class="w-full max-w-4xl mx-auto p-4 space-y-8">
+            </main>
+        
+        <footer class="w-full max-w-4xl mx-auto mt-12 text-center text-main-font">
+            <p class="text-sm text-slate-500">Phát triển bởi FOXSTUDIO.</p>
+            <p class="text-sm text-slate-500">MỌI THẮC MẮC LIÊN HỆ : nguyenvanhai.10a3@gmail.</p>
+        </footer>
+    </div>
+    
+    <div class="fixed-buttons">
+        <button id="openThemeModalBtn" class="p-3 rounded-full bg-yellow-500/80 shadow-lg cursor-pointer hover:bg-yellow-500 transition-all">
+            <img src="https://png.pngtree.com/element_our/20200702/ourmid/pngtree-settings-icon-image_2290382.jpg" alt="Settings Icon" class="h-8 w-8 rounded-full">
+        </button>
+        
+        <div id="chatbot-button" class="p-3 rounded-full bg-sky-500/80 shadow-lg cursor-pointer hover:bg-sky-500 transition-all">
+            <img src="https://www.shutterstock.com/image-vector/chat-bot-icon-virtual-smart-600nw-2478937553.jpg" alt="Chatbot Icon" class="h-8 w-8 rounded-full">
+        </div>
+
+        <button id="openPrintModalBtn" class="btn-secondary rounded-full p-3 shadow-lg print-button">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+        </button>
+    </div>
+
+    <div id="printModal" class="modal">
+        <div class="modal-content">
+            <button id="closePrintModalBtn" class="modal-close-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <h3 class="text-xl font-semibold text-accent mb-4">Chọn Sinh Viên để In</h3>
+            <div id="printOptionsContainer" class="space-y-4 max-h-[70vh] overflow-y-auto pr-2"></div>
+            <div class="mt-6 flex justify-end gap-3">
+                <button id="printAllBtn" class="btn-primary">In Tất Cả</button>
+                <button id="printSelectedBtn" class="btn-primary" disabled>In Đã Chọn</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="editStudentModal" class="modal">
+        <div class="modal-content">
+            <button id="closeEditStudentModalBtn" class="modal-close-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <h3 class="text-xl font-semibold text-accent mb-4">Chỉnh Sửa Thông Tin Sinh Viên</h3>
+            <form id="editStudentForm" class="space-y-4">
+                <input type="hidden" id="editStudentId" />
+                <div>
+                    <label class="block text-sm font-medium text-main-font mb-1">Họ và Tên</label>
+                    <input type="text" id="editStudentName" class="input-style" required />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-main-font mb-1">Mã Số Sinh Viên</label>
+                    <input type="text" id="editStudentIdInp" class="input-style" disabled />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-main-font mb-1">Lớp</label>
+                    <input type="text" id="editStudentClass" class="input-style" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-main-font mb-1">Khoa/Ngành</label>
+                    <input type="text" id="editStudentFaculty" class="input-style" />
+                </div>
+                <button type="submit" class="w-full btn-primary">Lưu Thay Đổi</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="themeModal" class="modal">
+        <div class="modal-content">
+            <button id="closeThemeModalBtn" class="modal-close-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <h3 class="text-xl font-semibold text-accent mb-4">Tùy Chỉnh Giao Diện</h3>
+            <div class="space-y-4">
+                <div>
+                    <h4 class="text-lg font-medium text-main-font mb-2">Chế độ giao diện</h4>
+                    <div class="flex gap-4">
+                        <button id="lightModeBtn" class="btn-secondary w-full">Sáng</button>
+                        <button id="darkModeBtn" class="btn-secondary w-full">Tối</button>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-lg font-medium text-main-font mb-2">Màu chủ đạo</h4>
+                    <input type="color" id="accentColorPicker" class="w-full h-12 rounded-lg cursor-pointer p-1 border border-input-border" />
+                </div>
+                <div>
+                    <h4 class="text-lg font-medium text-main-font mb-2">Màu chữ</h4>
+                    <input type="color" id="fontColorPicker" class="w-full h-12 rounded-lg cursor-pointer p-1 border border-input-border" />
+                </div>
+                 <div>
+                    <h4 class="text-lg font-medium text-main-font mb-2">Màu nền thẻ</h4>
+                    <input type="color" id="cardBgColorPicker" class="w-full h-12 rounded-lg cursor-pointer p-1 border border-input-border" />
+                </div>
+                <div>
+                    <h4 class="text-lg font-medium text-main-font mb-2">Ảnh nền</h4>
+                    <input type="file" id="bgImageFile" accept="image/*" class="input-style">
+                    <p class="text-sm text-slate-400 mt-2">Chọn một ảnh từ máy tính để làm ảnh nền.</p>
+                    <button id="removeBgBtn" class="w-full btn-outline-red mt-4">Xóa ảnh nền</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="chatbot-window" class="chatbot-container">
+        <div class="chatbot-header" id="chatbot-header">
+            <span>Chatbot hỗ trợ</span>
+            <button id="close-chatbot-btn" class="p-1 rounded-full hover:bg-white/20 transition-all duration-200">
+                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div class="chatbot-messages" id="chatbot-messages">
+            <div class="message bot-message">Xin chào! Tôi có thể giúp gì cho bạn về ứng dụng này?</div>
+        </div>
+        <div class="chatbot-input">
+            <input type="text" id="chatbot-input-field" class="input-style flex-grow" placeholder="Nhập tin nhắn..." />
+            <button id="send-btn" class="p-2 rounded-full bg-sky-500 text-white hover:bg-sky-600 transition-all duration-200">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div id="printContent" style="display: none;"></div>
+
+    <script>
+        // ======= Config & State =======
+        const APP_ID = 'html-gpa-multi-student';
+        const STORAGE_KEY = APP_ID + ':students';
+        const THEME_KEY = APP_ID + ':theme';
+        const BG_KEY = APP_ID + ':background';
+        const ACCENT_KEY = APP_ID + ':accent';
+        const FONT_COLOR_KEY = APP_ID + ':font-color';
+        const CARD_BG_KEY = APP_ID + ':card-bg';
+        let students = loadStudents();
+
+        // ======= Helpers (storage) =======
+        function loadStudents() {
+            try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+            catch { return []; }
+        }
+        function saveStudents() { localStorage.setItem(STORAGE_KEY, JSON.stringify(students)); }
+
+        // ======= Theme & Background Management =======
+        function applyTheme(theme) {
+            const body = document.body;
+            if (theme === 'light') {
+                body.classList.add('light-mode');
+            } else {
+                body.classList.remove('light-mode');
+            }
+            localStorage.setItem(THEME_KEY, theme);
+        }
+        function loadTheme() {
+            const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
+            applyTheme(savedTheme);
+        }
+
+        function applyAccentColor(color) {
+            document.documentElement.style.setProperty('--accent-color', color);
+            localStorage.setItem(ACCENT_KEY, color);
+        }
+        function loadAccentColor() {
+            const savedColor = localStorage.getItem(ACCENT_KEY) || '#0ea5e9';
+            applyAccentColor(savedColor);
+            const accentColorPicker = document.getElementById('accentColorPicker');
+            if(accentColorPicker) accentColorPicker.value = savedColor;
+        }
+        
+        function applyFontColor(color) {
+            document.documentElement.style.setProperty('--main-font-color', color);
+            localStorage.setItem(FONT_COLOR_KEY, color);
+        }
+        function loadFontColor() {
+            const savedColor = localStorage.getItem(FONT_COLOR_KEY) || 'var(--text-color)';
+            applyFontColor(savedColor);
+            const fontColorPicker = document.getElementById('fontColorPicker');
+            if(fontColorPicker) fontColorPicker.value = savedColor;
+        }
+
+        function applyCardBgColor(color) {
+             document.documentElement.style.setProperty('--card-bg', color);
+            localStorage.setItem(CARD_BG_KEY, color);
+        }
+        function loadCardBgColor() {
+            const savedColor = localStorage.getItem(CARD_BG_KEY) || '#1e293b';
+            applyCardBgColor(savedColor);
+            const cardBgColorPicker = document.getElementById('cardBgColorPicker');
+            if(cardBgColorPicker) cardBgColorPicker.value = savedColor;
+        }
+
+        function applyBackground(url) {
+            const body = document.body;
+            if (url) {
+                body.style.backgroundImage = `url('${url}')`;
+                body.classList.add('custom-bg');
+                localStorage.setItem(BG_KEY, url);
+            } else {
+                body.style.backgroundImage = '';
+                body.classList.remove('custom-bg');
+                localStorage.removeItem(BG_KEY);
+            }
+        }
+        function loadBackground() {
+            const savedBg = localStorage.getItem(BG_KEY);
+            if (savedBg) {
+                applyBackground(savedBg);
+            }
+        }
+        
+        // ======= Quy đổi điểm theo yêu cầu =======
+        function avgToLetter(d) {
+            if (d >= 10) return 'A';
+            else if (d >= 9) return 'A';
+            else if (d >= 8.5) return 'A';
+            else if (d >= 7.8) return 'B+';
+            else if (d >= 7.0) return 'B';
+            else if (d >= 6.3) return 'C+';
+            else if (d >= 5.5) return 'C';
+            else if (d >= 4.8) return 'D+';
+            else if (d >= 4.0) return 'D';
+            return 'F';
+        }
+        function avgToPoint4(d) {
+            if (d >= 10) return 4.0;
+            else if (d>= 7.8) return 3.5;
+            else if (d >= 7.0) return 3.0;
+            else if (d >= 6.3) return 2.5;
+            else if (d >= 5.5) return 2.0;
+            else if (d>= 4.8) return 1.5;
+            else if (d >= 4.0) return 1.;
+            return 0.0;
+        }
+        function gradeToPoint(g) {
+            const gradeStr = String(g).toUpperCase().trim();
+            const numeric = parseFloat(gradeStr);
+            if (!isNaN(numeric) && numeric >= 0 && numeric <= 4) return numeric;
+            switch (gradeStr) {
+                case 'A': return 4.0;
+                case 'B+': return 3.5;
+                case 'B': return 3.0;
+                case 'C+': return 2.5;
+                case 'C': return 2.0;
+                case 'D+': return 1.5;
+                case 'D': return 1.0;
+                case 'F': return 0.0;
+                default: return NaN;
+            }
+        }
+
+        // ======= GPA Calculation =======
+        function computeGPA(studentCourses) {
+            if (!studentCourses.length) return 0;
+            let totalPoints = 0, totalCredits = 0;
+            studentCourses.forEach(c => {
+                const cred = parseFloat(c.credits);
+                const point = (typeof c.point4 === 'number') ? c.point4 : gradeToPoint(c.grade);
+                if (!isNaN(cred) && cred > 0 && !isNaN(point)) {
+                    totalPoints += point * cred;
+                    totalCredits += cred;
+                }
+            });
+            return totalCredits === 0 ? 0 : (totalPoints / totalCredits);
+        }
+        
+        const tabContentHtml = {
+            'intro': `
+                <section id="intro" class="content-section active bg-card-bg shadow-2xl rounded-xl p-6">
+                    <h2 class="text-2xl font-semibold mb-6 text-accent">Giới Thiệu</h2>
+                    <div class="space-y-4 text-main-font">
+                        <p>
+                            Chào mừng bạn đến với ứng dụng tính điểm và quản lý thông tin sinh viên của FOXSTUDIO. Ứng dụng này được thiết kế để giúp bạn dễ dàng theo dõi kết quả học tập, tính toán điểm trung bình (GPA) và lưu trữ thông tin cá nhân.
+                        </p>
+                        <p>
+                            Với giao diện trực quan, bạn có thể thêm nhiều sinh viên, cập nhật điểm các môn học và xem điểm GPA được tính tự động. Tính năng in ấn cho phép bạn xuất bản in thông tin và kết quả học tập ra file PDF một cách nhanh chóng.
+                        </p>
+                    </div>
+                    <div class="qr-code-section flex flex-col sm:flex-row items-center justify-center gap-6 mt-10">
+                        <img src="https://uploads.onecompiler.io/43u4wb3ft/43unfu266/APPTTSV.png"
+                            alt="QR Code"
+                            class="h-[150px] w-[150px] rounded-xl">
+                        <h2 class="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-300">
+                            QUÉT QR CODE NGAY ĐỂ <br class="hidden sm:block"> TẢI APP MOBILE.
+                        </h2>
+                    </div>
+                </section>`,
+            'add-student': `
+                <section id="add-student" class="content-section bg-card-bg shadow-2xl rounded-xl p-6">
+                    <h2 class="text-2xl font-semibold mb-6 text-accent">Thêm Sinh Viên Mới</h2>
+                    <form id="studentForm" class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-main-font mb-1">Họ và Tên</label>
+                            <input type="text" id="newStudentName" class="input-style" placeholder="Nguyễn Văn A" required />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-main-font mb-1">Mã Số Sinh Viên</label>
+                            <input type="text" id="newStudentId" class="input-style" placeholder="20201234" required />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-main-font mb-1">Lớp</label>
+                            <input type="text" id="newStudentClass" class="input-style" placeholder="CNTT-K65" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-main-font mb-1">Khoa/Ngành</label>
+                            <input type="text" id="newStudentFaculty" class="input-style" placeholder="Công nghệ Thông tin" />
+                        </div>
+                        <p id="studentError" class="text-red-400 text-sm"></p>
+                        <div class="pt-2">
+                            <button type="submit" class="w-full btn-primary" id="btnAddNewStudent">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v-1.5m0 0a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0-.75.75v3m7.5 7.5v-1.5m0 0a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0-.75.75v3m7.5 7.5v-1.5m0 0a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0-.75.75v3M4.5 9.75a2.25 2.25 0 1 0 0 4.5h15a2.25 2.25 0 1 0 0-4.5h-15Z" />
+                                </svg>
+                                <span class="ml-2">Thêm Sinh Viên</span>
+                            </button>
+                        </div>
+                    </form>
+                </section>`,
+            'student-list': `
+                <section id="student-list" class="content-section">
+                    <div class="bg-card-bg shadow-2xl rounded-xl p-6 mb-6">
+                        <h2 class="text-2xl font-semibold mb-6 text-accent">Quản Lý Sinh Viên</h2>
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                            <div class="flex items-center gap-2">
+                                <label for="sortOrder" class="text-sm font-medium text-main-font">Sắp xếp theo:</label>
+                                <select id="sortOrder" class="input-style-sm">
+                                    <option value="name-asc">Tên (A-Z)</option>
+                                    <option value="name-desc">Tên (Z-A)</option>
+                                    <option value="gpa-desc">GPA (Cao - Thấp)</option>
+                                    <option value="gpa-asc">GPA (Thấp - Cao)</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-2">
+                                <button id="exportDataBtn" class="btn-outline-blue text-sm">Xuất Dữ liệu</button>
+                                <label for="importFile" class="btn-outline-blue text-sm cursor-pointer">
+                                    Nhập Dữ liệu
+                                    <input type="file" id="importFile" accept=".json" class="hidden">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="studentsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                </section>`,
+            'contact': `
+    <section id="contact" class="content-section bg-card-bg shadow-2xl rounded-xl p-6">
+        <h2 class="text-2xl font-semibold mb-6 text-accent">Liên Hệ</h2>
+        <p class="text-sm text-main-font mb-4">Kết nối với chúng tôi qua các kênh sau để được hỗ trợ và cập nhật thông tin mới nhất!</p>
+        <div class="flex flex-col sm:flex-row gap-4">
+            <a href="https://www.facebook.com/nguyen.hai.225063" target="_blank" rel="noopener" class="w-full btn-outline-blue flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mr-2">
+                    <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.58-1.333h2.42v-4h-3.998c-2.761 0-4.002 1.147-4.002 3.205v1.795z"/>
+                </svg>
+                <span>Liên hệ Facebook</span>
+            </a>
+            <a href="mailto:nguyenvanhai.10a3@gmail.com" class="w-full btn-outline-red flex items-center justify-center">
+                <img src="https://png.pngtree.com/element_our/png/20181213/inbox-vector-icon-png_267453.jpg" alt="Email Icon" class="w-6 h-6 mr-2 rounded-full" >
+                <span>Gửi Email</span>
+            </a>
+        </div>
+    </section>
+    <section class="bg-card-bg shadow-2xl rounded-xl p-6">
+        <div class="flex items-center mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-6 h-6 mr-2 text-red-500" viewBox="0 0 24 24">
+                <path d="M21.582,6.186c-0.23-0.86-0.908-1.538-1.768-1.768C18.25,4,12,4,12,4S5.75,4,4.186,4.418 c-0.86,0.23-1.538,0.908-1.768,1.768C2,7.75,2,12,2,12s0,4.25,0.418,5.814c0.23,0.86,0.908,1.538,1.768,1.768 C5.75,20,12,20,12,20s6.25,0,7.814-0.418c0.861-0.23,1.538-0.908,1.768-1.768C22,16.25,22,12,22,12S22,7.75,21.582,6.186z M10,15.5v-7l6,3.5L10,15.5z"/>
+            </svg>
+            <h2 class="text-2xl font-semibold text-red-500">Kênh YouTube Đề Xuất</h2>
+        </div>
+        <div>
+            <h3 class="text-xl font-semibold text-accent" id="ytName">Kênh YouTube của FOX</h3>
+            <p class="text-sm text-main-font mt-1 mb-3" id="ytDesc">Nơi chia sẻ những video hữu ích và thú vị. Hãy ghé thăm và ủng hộ nhé!</p>
+            <a id="ytUrl" href="https://www.youtube.com/channel/UCSRG41tE6J27W5SCsAVahGw" target="_blank" rel="noopener" class="btn-outline-red">Xem Kênh và Đăng ký</a>
+        </div>
+    </section>
+    <section class="bg-card-bg shadow-2xl rounded-xl p-6">
+        <div class="flex items-center mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A11.978 11.978 0 0 1 12 13.5c-2.998 0-5.74-1.1-7.843-2.918M3.284 9.747c0-.778.099-1.533.284-2.253" />
+            </svg>
+            <h2 class="text-2xl font-semibold text-blue-500">Website của trường </h2>
+        </div>
+        <div>
+            <h3 class="text-xl font-semibold text-accent" id="webName">TRANG TT CỦA TRƯỜNG ĐH PHẠM VĂN ĐỒNG</h3>
+            <p class="text-sm text-main-font mt-1 mb-3" id="webDesc">Khám phá những kiến thức bổ ích và công cụ học tập tuyệt vời tại đây!</p>
+            <a id="webUrl" href="https://www.pdu.edu.vn/" target="_blank" rel="noopener" class="btn-outline-blue">Truy cập Website</a>
+        </div>
+    </section>
+`
+        };
+
+        function switchTab(tabName) {
+            const sidebarLinks = document.querySelectorAll('.sidebar-link');
+            sidebarLinks.forEach(link => {
+                link.classList.remove('active');
+            });
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            
+            const tabContentContainer = document.getElementById('tab-content');
+            tabContentContainer.innerHTML = tabContentHtml[tabName];
+            
+            if (tabName === 'student-list') {
+                const sortOrderSelect = document.getElementById('sortOrder');
+                const exportDataBtn = document.getElementById('exportDataBtn');
+                const importFileInp = document.getElementById('importFile');
+                sortOrderSelect.addEventListener('change', (e) => sortStudents(e.target.value));
+                exportDataBtn.addEventListener('click', exportData);
+                importFileInp.addEventListener('change', importData);
+                renderStudents();
+            } else if (tabName === 'add-student') {
+                const studentForm = document.getElementById('studentForm');
+                studentForm.addEventListener('submit', addNewStudent);
+            }
+        }
+        
+        function attachEventListeners() {
+            // Edit student
+            document.querySelectorAll('[data-edit-student]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const studentId = e.currentTarget.getAttribute('data-edit-student');
+                    const studentToEdit = students.find(s => s.id === studentId);
+                    if (studentToEdit) {
+                        document.getElementById('editStudentId').value = studentToEdit.id;
+                        document.getElementById('editStudentName').value = studentToEdit.name;
+                        document.getElementById('editStudentIdInp').value = studentToEdit.studentId;
+                        document.getElementById('editStudentClass').value = studentToEdit.class;
+                        document.getElementById('editStudentFaculty').value = studentToEdit.faculty;
+                        document.getElementById('editStudentModal').classList.add('show');
+                    }
+                });
+            });
+            
+            // Delete student
+            document.querySelectorAll('[data-del-student]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const studentId = e.currentTarget.getAttribute('data-del-student');
+                    students = students.filter(s => s.id !== studentId);
+                    saveStudents();
+                    renderStudents();
+                });
+            });
+
+            // Delete course
+            document.querySelectorAll('[data-del-course]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const courseId = e.currentTarget.getAttribute('data-del-course');
+                    const studentCard = e.currentTarget.closest('.student-card');
+                    const studentId = studentCard.querySelector('.course-form').getAttribute('data-student-id');
+                    const student = students.find(s => s.id === studentId);
+                    if (student) {
+                        student.courses = student.courses.filter(c => c.id !== courseId);
+                        saveStudents();
+                        renderStudents();
+                    }
+                });
+            });
+
+            // Toggle detailed score input
+            document.querySelectorAll('.toggleDetailed').forEach(toggle => {
+                toggle.addEventListener('change', (e) => {
+                    const form = e.currentTarget.closest('.course-form');
+                    const simpleArea = form.querySelector('.simpleGradeArea');
+                    const detailedArea = form.querySelector('.detailedArea');
+                    if (e.currentTarget.checked) {
+                        simpleArea.classList.add('hidden');
+                        detailedArea.classList.remove('hidden');
+                    } else {
+                        detailedArea.classList.add('hidden');
+                        simpleArea.classList.remove('hidden');
+                    }
+                });
+            });
+
+            // Calculate detailed score
+            document.querySelectorAll('.detailedArea input[type="number"]').forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const form = e.currentTarget.closest('.course-form');
+                    const hs1Inp = form.querySelector('.hs1Inp');
+                    const hs2Inp = form.querySelector('.hs2Inp');
+                    const thiInp = form.querySelector('.thiInp');
+                    const detailedResult = form.querySelector('.detailedResult');
+
+                    const hs1 = parseFloat(hs1Inp.value) || 0;
+                    const hs2 = parseFloat(hs2Inp.value) || 0;
+                    const thi = parseFloat(thiInp.value) || 0;
+
+                    const avg = (hs1 + hs2 * 2 + thi * 3) / 6;
+                    const grade = avgToLetter(avg);
+                    const point4 = avgToPoint4(avg);
+
+                    detailedResult.innerHTML = `
+                        <p>Điểm trung bình (hệ 10): <strong>${avg.toFixed(2)}</strong></p>
+                        <p>Điểm chữ: <strong>${grade}</strong></p>
+                        <p>Điểm hệ 4: <strong>${point4.toFixed(1)}</strong></p>
+                    `;
+                    detailedResult.classList.remove('hidden');
+                });
+            });
+
+            // Add course
+            document.querySelectorAll('.course-form').forEach(form => {
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const studentId = e.target.getAttribute('data-student-id');
+                    const student = students.find(s => s.id === studentId);
+                    const courseError = e.target.querySelector('.course-error');
+                    courseError.textContent = '';
+
+                    const courseName = e.target.querySelector('.courseNameInp').value;
+                    const credits = parseFloat(e.target.querySelector('.creditsInp').value);
+
+                    let newCourse = {
+                        id: 'c-' + Date.now(),
+                        name: courseName,
+                        credits: credits,
+                    };
+
+                    const isDetailed = e.target.querySelector('.toggleDetailed').checked;
+                    if (isDetailed) {
+                        const hs1 = parseFloat(e.target.querySelector('.hs1Inp').value);
+                        const hs2 = parseFloat(e.target.querySelector('.hs2Inp').value);
+                        const thi = parseFloat(e.target.querySelector('.thiInp').value);
+                        if (isNaN(hs1) || isNaN(hs2) || isNaN(thi)) {
+                            courseError.textContent = 'Vui lòng nhập đầy đủ các điểm chi tiết.';
+                            return;
+                        }
+                        const avg = (hs1 + hs2 * 2 + thi * 3) / 6;
+                        newCourse = { ...newCourse, hs1: hs1, hs2: hs2, thi: thi, avg: avg, grade: avgToLetter(avg), point4: avgToPoint4(avg) };
+                    } else {
+                        const gradeInput = e.target.querySelector('.gradeInput');
+                        const avgInput = e.target.querySelector('.avgInput');
+                        const gradeValue = gradeInput.value.trim();
+                        const avgValue = avgInput.value.trim();
+                        if (!gradeValue && !avgValue) {
+                            courseError.textContent = 'Vui lòng nhập điểm tổng kết hoặc điểm học phần.';
+                            return;
+                        }
+                        if (gradeValue) {
+                            const point4 = gradeToPoint(gradeValue);
+                            if (isNaN(point4)) {
+                                courseError.textContent = 'Điểm chữ không hợp lệ. Vui lòng nhập đúng định dạng (A, B+, C, v.v.)';
+                                return;
+                            }
+                            newCourse = { ...newCourse, grade: gradeValue, point4: point4 };
+                        } else if (avgValue) {
+                            const avg = parseFloat(avgValue);
+                            if (isNaN(avg) || avg < 0 || avg > 10) {
+                                courseError.textContent = 'Điểm học phần không hợp lệ. Vui lòng nhập từ 0 đến 10.';
+                                return;
+                            }
+                            newCourse = { ...newCourse, avg: avg, grade: avgToLetter(avg), point4: avgToPoint4(avg) };
+                        }
+                    }
+                    student.courses.push(newCourse);
+                    saveStudents();
+                    renderStudents();
+                    form.reset();
+                    courseError.textContent = '';
+                });
+            });
+        }
+        
+        function addNewStudent(e) {
+            e.preventDefault();
+            const newStudentId = document.getElementById('newStudentId').value.trim();
+            const existingStudent = students.find(s => s.studentId === newStudentId);
+            const studentError = document.getElementById('studentError');
+            if (existingStudent) {
+                studentError.textContent = 'Mã số sinh viên đã tồn tại. Vui lòng nhập mã số khác.';
+                return;
+            }
+            const newStudent = {
+                id: 's-' + Date.now(),
+                name: document.getElementById('newStudentName').value,
+                studentId: newStudentId,
+                class: document.getElementById('newStudentClass').value,
+                faculty: document.getElementById('newStudentFaculty').value,
+                courses: []
+            };
+            students.push(newStudent);
+            saveStudents();
+            document.getElementById('studentForm').reset();
+            studentError.textContent = '';
+            alert('Đã thêm sinh viên mới thành công!');
+        }
+
+        function sortStudents(sortType) {
+            switch(sortType) {
+                case 'name-asc':
+                    students.sort((a, b) => a.name.localeCompare(b.name));
+                    break;
+                case 'name-desc':
+                    students.sort((a, b) => b.name.localeCompare(a.name));
+                    break;
+                case 'gpa-desc':
+                    students.sort((a, b) => computeGPA(b.courses) - computeGPA(a.courses));
+                    break;
+                case 'gpa-asc':
+                    students.sort((a, b) => computeGPA(a.courses) - computeGPA(b.courses));
+                    break;
+            }
+            renderStudents();
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(students, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'students_data.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function importData(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const importedStudents = JSON.parse(event.target.result);
+                        if (Array.isArray(importedStudents)) {
+                            students = importedStudents;
+                            saveStudents();
+                            renderStudents();
+                            alert('Nhập dữ liệu thành công!');
+                        } else {
+                            alert('Tệp JSON không hợp lệ. Vui lòng chọn tệp đúng định dạng.');
+                        }
+                    } catch (error) {
+                        alert('Lỗi khi xử lý tệp JSON.');
+                        console.error(error);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function renderStudents() {
+            const studentsContainer = document.getElementById('studentsContainer');
+            if (!studentsContainer) return;
+            studentsContainer.innerHTML = '';
+            if (students.length === 0) {
+                studentsContainer.innerHTML = `<p class="text-main-font text-center py-10 w-full col-span-full">Chưa có sinh viên nào. Vui lòng thêm sinh viên mới.</p>`;
+                return;
+            }
+            students.forEach(student => {
+                const gpa = computeGPA(student.courses);
+                const cardHtml = `
+                    <div class="student-card bg-card-bg shadow-2xl rounded-xl p-6 relative">
+                        <div class="flex items-center absolute top-2 right-2">
+                            <button class="btn-icon-edit" data-edit-student="${student.id}" title="Chỉnh sửa thông tin sinh viên">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                            </button>
+                            <button class="btn-icon-danger" data-del-student="${student.id}" title="Xóa sinh viên này">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="mb-6 pb-4 border-b border-border-color">
+                            <h3 class="text-xl font-semibold text-accent">${student.name}</h3>
+                             <p class="text-sm text-main-font">MSSV: ${student.studentId}</p>
+                             <p class="text-sm text-main-font">Lớp: ${student.class || 'N/A'}</p>
+                             <p class="text-sm text-main-font">Khoa: ${student.faculty || 'N/A'}</p>
+                             <div class="mt-4 bg-slate-700 px-4 py-2 rounded-lg shadow">
+                                 <span class="text-main-font font-medium">GPA: </span>
+                                 <span class="text-2xl font-bold text-emerald-400">${gpa.toFixed(2)}</span>
+                             </div>
+                        </div>
+                        <div class="space-y-4 mb-6">
+                            <h4 class="text-lg font-semibold text-accent">Thêm Môn Học</h4>
+                            <form class="course-form" data-student-id="${student.id}">
+                                <div>
+                                    <label class="block text-sm font-medium text-main-font mb-1">Tên Môn Học</label>
+                                    <input type="text" class="courseNameInp input-style" placeholder="VD: Lập trình Web" required />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-main-font mb-1">Số Tín Chỉ</label>
+                                    <input type="number" class="creditsInp input-style" placeholder="VD: 3" min="0.5" step="0.5" required />
+                                </div>
+                                <div class="flex items-center space-x-2 pt-2">
+                                    <input type="checkbox" class="toggleDetailed h-4 w-4 rounded border-slate-600 text-accent focus:ring-accent"/>
+                                    <label class="text-sm font-medium text-main-font">Tính điểm chi tiết</label>
+                                </div>
+                                <div class="simpleGradeArea space-y-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-main-font mb-1">Điểm Tổng Kết (A-F, 0-4)</label>
+                                        <input type="text" class="gradeInput input-style" placeholder="VD: A, B+, 3.0" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-main-font mb-1">Điểm Học Phần (0-10)</label>
+                                        <input type="number" class="avgInput input-style" placeholder="VD: 7.8" step="0.1" min="0" max="10" />
+                                    </div>
+                                </div>
+                                <div class="detailedArea space-y-4 p-4 border border-slate-700 rounded-lg mt-2 bg-slate-800/50 hidden">
+                                    <h5 class="text-base font-semibold text-accent mb-3">Chi Tiết Điểm</h5>
+                                    <div class="grid grid-cols-3 gap-3">
+                                        <div><label class="block text-xs text-main-font mb-1">HS1</label><input type="number" step="0.1" min="0" max="10" class="hs1Inp input-style-sm" placeholder="VD: 7.0" /></div>
+                                        <div><label class="block text-xs text-main-font mb-1">HS2</label><input type="number" step="0.1" min="0" max="10" class="hs2Inp input-style-sm" placeholder="VD: 8.0" /></div>
+                                        <div><label class="block text-xs text-main-font mb-1">Điểm Thi</label><input type="number" step="0.1" min="0" max="10" class="thiInp input-style-sm" placeholder="VD: 7.5" /></div>
+                                    </div>
+                                    <div class="detailedResult mt-3 p-3 bg-slate-700/50 rounded-md text-sm hidden"></div>
+                                </div>
+                                <p class="course-error text-red-400 text-sm mt-1"></p>
+                                <button type="submit" class="w-full btn-primary">Thêm Môn</button>
+                            </form>
+                        </div>
+                        <div class="course-table-wrap">
+                            ${renderCourseTable(student.courses)}
+                        </div>
+                    </div>
+                `;
+                studentsContainer.innerHTML += cardHtml;
+            });
+            attachEventListeners();
+        }
+
+        function renderCourseTable(courses, forPrint = false) {
+            if (!courses.length) {
+                return forPrint ? `<p class="text-center py-4 text-black">Chưa có môn học nào.</p>` : `<p class="text-main-font text-center py-4">Chưa có môn học nào.</p>`;
+            }
+            const rows = courses.map(c => `
+                <tr class="border-b ${forPrint ? 'border-gray-300' : 'border-slate-700 hover:bg-slate-700/50'}">
+                    <td class="${forPrint ? '' : 'td-style'}">${c.name}</td>
+                    <td class="${forPrint ? '' : 'td-style'} text-center">${c.credits}</td>
+                    <td class="${forPrint ? '' : 'td-style'} text-center">${(typeof c.hs1 === 'number') ? c.hs1.toFixed(1) : '-'}</td>
+                    <td class="${forPrint ? '' : 'td-style'} text-center">${(typeof c.hs2 === 'number') ? c.hs2.toFixed(1) : '-'}</td>
+                    <td class="${forPrint ? '' : 'td-style'} text-center">${(typeof c.thi === 'number') ? c.thi.toFixed(1) : '-'}</td>
+                    <td class="${forPrint ? '' : 'td-style'} text-center">${(typeof c.avg === 'number') ? c.avg.toFixed(2) : '-'}</td>
+                    <td class="${forPrint ? '' : 'td-style'} text-center">${c.grade || '-'}</td>
+                    <td class="${forPrint ? '' : 'td-style'} text-center">${(typeof c.point4 === 'number') ? c.point4.toFixed(1) : ((gradeToPoint(c.grade) ?? NaN) || 0).toFixed(1)}</td>
+                    <td class="${forPrint ? 'hidden' : 'td-style text-center'}">
+                        <button class="btn-icon-danger" data-del-course="${c.id}" title="Xóa môn này">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12.56 0c.342.052.682.107 1.022.166m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                            </svg>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            return `
+                <div class="course-table-wrap">
+                    <table class="w-full min-w-max text-left">
+                        <thead class="border-b border-border-color">
+                            <tr>
+                                <th class="${forPrint ? '' : 'th-style'}">Tên Môn</th>
+                                <th class="${forPrint ? '' : 'th-style'} text-center">Tín Chỉ</th>
+                                <th class="${forPrint ? '' : 'th-style'} text-center">HS1</th>
+                                <th class="${forPrint ? '' : 'th-style'} text-center">HS2</th>
+                                <th class="${forPrint ? '' : 'th-style'} text-center">Điểm Thi</th>
+                                <th class="${forPrint ? '' : 'th-style'} text-center">Điểm HP</th>
+                                <th class="${forPrint ? '' : 'th-style'} text-center">Chữ</th>
+                                <th class="${forPrint ? '' : 'th-style'} text-center">Hệ 4</th>
+                                <th class="${forPrint ? 'hidden' : 'th-style text-center'}">Hành Động</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+        
+        function renderPrintOptions() {
+            const printOptionsContainer = document.getElementById('printOptionsContainer');
+            if(!printOptionsContainer) return;
+            printOptionsContainer.innerHTML = '';
+            students.forEach(student => {
+                const optionHtml = `
+                    <div class="flex items-center space-x-3">
+                        <input type="checkbox" class="print-checkbox h-5 w-5 rounded border-slate-600 text-accent focus:ring-accent" data-student-id="${student.id}" />
+                        <label class="text-main-font font-medium">${student.name} - ${student.studentId}</label>
+                    </div>
+                `;
+                printOptionsContainer.innerHTML += optionHtml;
+            });
+
+            const checkboxes = printOptionsContainer.querySelectorAll('.print-checkbox');
+            const printSelectedBtn = document.getElementById('printSelectedBtn');
+            if(printSelectedBtn) {
+                checkboxes.forEach(cb => {
+                    cb.addEventListener('change', () => {
+                        const hasSelection = Array.from(checkboxes).some(c => c.checked);
+                        printSelectedBtn.disabled = !hasSelection;
+                    });
+                });
+                printSelectedBtn.disabled = !Array.from(checkboxes).some(c => c.checked);
+            }
+        }
+
+        function createPrintContent(selectedStudents) {
+            const printContentArea = document.getElementById('printContent');
+            if(!printContentArea) return;
+            printContentArea.innerHTML = '';
+            
+            selectedStudents.forEach(student => {
+                const gpa = computeGPA(student.courses);
+                // Đã chỉnh sửa lại nội dung trang in cho gọn gàng hơn
+                const printCardHtml = `
+                    <div class="print-page p-6 mb-6">
+                        <div class="print-info">
+                            <h3 class="text-xl font-semibold">Họ và Tên: <strong>${student.name}</strong></h3>
+                            <p><strong>Mã Số Sinh Viên:</strong> ${student.studentId}</p>
+                            <p><strong>Lớp:</strong> ${student.class || 'N/A'}</p>
+                            <p><strong>Khoa:</strong> ${student.faculty || 'N/A'}</p>
+                            <p><strong>GPA tích lũy:</strong> <span class="font-bold text-emerald-400">${gpa.toFixed(2)}</span></p>
+                        </div>
+                        
+                        <div class="course-table-wrap mt-4">
+                            ${renderCourseTable(student.courses, true)}
+                        </div>
+
+                        </div>
+                `;
+                printContentArea.innerHTML += printCardHtml;
+            });
+        }
+        
+        function addNewStudent(e) {
+            e.preventDefault();
+            const newStudentIdInp = document.getElementById('newStudentId');
+            const newStudentNameInp = document.getElementById('newStudentName');
+            const newStudentClassInp = document.getElementById('newStudentClass');
+            const newStudentFacultyInp = document.getElementById('newStudentFaculty');
+            const studentError = document.getElementById('studentError');
+
+            if (!newStudentIdInp || !newStudentNameInp) return;
+
+            const newStudentId = newStudentIdInp.value.trim();
+            const existingStudent = students.find(s => s.studentId === newStudentId);
+            
+            if (existingStudent) {
+                studentError.textContent = 'Mã số sinh viên đã tồn tại. Vui lòng nhập mã số khác.';
+                return;
+            }
+            const newStudent = {
+                id: 's-' + Date.now(),
+                name: newStudentNameInp.value,
+                studentId: newStudentId,
+                class: newStudentClassInp.value,
+                faculty: newStudentFacultyInp.value,
+                courses: []
+            };
+            students.push(newStudent);
+            saveStudents();
+            document.getElementById('studentForm').reset();
+            studentError.textContent = '';
+            alert('Đã thêm sinh viên mới thành công!');
+        }
+
+        function sortStudents(sortType) {
+            switch(sortType) {
+                case 'name-asc':
+                    students.sort((a, b) => a.name.localeCompare(b.name));
+                    break;
+                case 'name-desc':
+                    students.sort((a, b) => b.name.localeCompare(a.name));
+                    break;
+                case 'gpa-desc':
+                    students.sort((a, b) => computeGPA(b.courses) - computeGPA(a.courses));
+                    break;
+                case 'gpa-asc':
+                    students.sort((a, b) => computeGPA(a.courses) - computeGPA(b.courses));
+                    break;
+            }
+            renderStudents();
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(students, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'students_data.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function importData(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const importedStudents = JSON.parse(event.target.result);
+                        if (Array.isArray(importedStudents)) {
+                            students = importedStudents;
+                            saveStudents();
+                            renderStudents();
+                            alert('Nhập dữ liệu thành công!');
+                        } else {
+                            alert('Tệp JSON không hợp lệ. Vui lòng chọn tệp đúng định dạng.');
+                        }
+                    } catch (error) {
+                        alert('Lỗi khi xử lý tệp JSON.');
+                        console.error(error);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+        
+        function appendMessage(text, type) {
+            const chatbotMessages = document.getElementById('chatbot-messages');
+            if(!chatbotMessages) return;
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', type + '-message');
+            messageElement.textContent = text;
+            chatbotMessages.appendChild(messageElement);
+            chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+        }
+
+        async function handleChatbotResponse(message) {
+            const lowerMessage = message.toLowerCase();
+            let response = "";
+            if (lowerMessage.includes("về bạn chatbot") || lowerMessage.includes("chatbot") || lowerMessage.includes("bạn là ai")) {
+                response = "Tôi là chatbot được FoxST tạo ra để giải quyết thắc mắc của bạn về app, và có thể trả lời các câu hỏi nâng cao ngoài lề. Vui lòng nhập thắc mắc của bạn tôi sẽ trả lời.";
+            } else if (lowerMessage.includes("về app") || lowerMessage.includes("app này")) {
+                response = "Ứng dụng này được thiết kế để giúp bạn dễ dàng theo dõi kết quả học tập, tính toán điểm trung bình (GPA) và lưu trữ thông tin cá nhân.";
+            } else if (lowerMessage.includes("liên hệ") || lowerMessage.includes("liên lạc") || lowerMessage.includes("facebook") || lowerMessage.includes("email")) {
+                response = "Bạn có thể liên hệ với nhà phát triển qua:\n- Facebook: https://www.facebook.com/nguyen.hai.225063\n- Email: nguyenvanhai.10a3@gmail.com";
+            } else if (lowerMessage.includes("thêm sinh viên") || lowerMessage.includes("thêm sv")) {
+                response = "Để thêm sinh viên mới, bạn hãy điền đầy đủ thông tin vào biểu mẫu 'Thêm Sinh Viên Mới' ở đầu trang và nhấn nút 'Thêm Sinh Viên'.";
+            } else if (lowerMessage.includes("thêm môn học") || lowerMessage.includes("thêm môn")) {
+                response = "Để thêm môn học, bạn chọn sinh viên cần thêm môn, điền tên môn học, số tín chỉ và điểm. Bạn có thể chọn 'Tính điểm chi tiết' để nhập điểm thành phần.";
+            } else if (lowerMessage.includes("tính điểm") || lowerMessage.includes("gpa")) {
+                response = "Ứng dụng sẽ tự động tính điểm GPA sau khi bạn thêm môn học cho sinh viên. Điểm GPA sẽ hiển thị ngay trên thẻ thông tin của sinh viên đó.";
+            } else if (lowerMessage.includes("in danh sách ") || lowerMessage.includes("xuất file")) {
+                response = "Bạn có thể sử dụng nút máy in ở góc dưới bên phải để in thông tin của sinh viên. Sau đó, bạn có thể chọn in tất cả hoặc in một sinh viên cụ thể.";
+            } else if (lowerMessage.includes("xóa") || lowerMessage.includes("xoá")) {
+                response = "Bạn có thể xóa sinh viên hoặc môn học bằng cách nhấn vào biểu tượng thùng rác (x) tương ứng trên thẻ thông tin của họ.";
+            } else {
+                appendMessage("Đang nhập...", 'bot');
+                try {
+                    const geminiResponse = await getGeminiResponse(message);
+                    document.getElementById('chatbot-messages').lastChild.textContent = geminiResponse;
+                    return;
+                } catch (error) {
+                    document.getElementById('chatbot-messages').lastChild.textContent = "Xin lỗi, tôi không thể xử lý yêu cầu của bạn lúc này. Vui lòng thử lại sau.";
+                    return;
+                }
+            }
+            appendMessage(response, 'bot');
+        }
+
+        // Thay thế hàm cũ trong thẻ <script> của file index.html
+
+async function getGeminiResponse(query) {
+    // Điểm cuối API giờ là endpoint do Vercel tự động tạo ra từ file api/chat.js
+    const API_ENDPOINT = '/api/chat'; 
+
+    const currentYear = new Date().getFullYear();
+    const contextualQuery = `Năm hiện tại là ${currentYear}. Vui lòng trả lời câu hỏi sau: ${query}`;
+
+    try {
+        const response = await fetch(API_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // Gửi câu hỏi của người dùng trong body để backend có thể nhận được
+            body: JSON.stringify({ query: contextualQuery }) 
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Lỗi từ server: ${errorData.error}`);
+        }
+        
+        const data = await response.json();
+
+        // Lấy nội dung text từ dữ liệu mà backend trả về
+        if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
+            return data.candidates[0].content.parts[0].text;
+        } else {
+            return "Xin lỗi, tôi không thể tạo câu trả lời cho yêu cầu này.";
+        }
+    } catch (error) {
+        console.error("Lỗi khi gọi API qua serverless function:", error);
+        return "Đã xảy ra lỗi kết nối đến chatbot. Vui lòng thử lại sau.";
+    }
+}
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabContentContainer = document.getElementById('tab-content');
+            
+            // Tải các tùy chỉnh giao diện
+            loadTheme();
+            loadAccentColor();
+            loadFontColor();
+            loadCardBgColor();
+            loadBackground();
+            
+            // Gắn sự kiện cho Sidebar
+            const sidebarLinks = document.querySelectorAll('.sidebar-link');
+            sidebarLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    switchTab(link.dataset.tab);
+                    if (window.innerWidth < 768) {
+                        sidebar.classList.add('-translate-x-full');
+                        sidebarBackdrop.classList.remove('active');
+                    }
+                });
+            });
+
+            const openSidebarBtn = document.getElementById('open-sidebar-btn');
+            const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+            
+            openSidebarBtn.addEventListener('click', () => {
+                sidebar.classList.remove('-translate-x-full');
+                sidebarBackdrop.classList.add('active');
+            });
+            closeSidebarBtn.addEventListener('click', () => {
+                sidebar.classList.add('-translate-x-full');
+                sidebarBackdrop.classList.remove('active');
+            });
+            sidebarBackdrop.addEventListener('click', () => {
+                sidebar.classList.add('-translate-x-full');
+                sidebarBackdrop.classList.remove('active');
+            });
+            
+            // Gắn sự kiện cho các Modal
+            const editStudentModal = document.getElementById('editStudentModal');
+            const closeEditStudentModalBtn = document.getElementById('closeEditStudentModalBtn');
+            const editStudentForm = document.getElementById('editStudentForm');
+
+            editStudentForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const studentId = document.getElementById('editStudentId').value;
+                const studentToEdit = students.find(s => s.id === studentId);
+                if (studentToEdit) {
+                    studentToEdit.name = document.getElementById('editStudentName').value;
+                    studentToEdit.class = document.getElementById('editStudentClass').value;
+                    studentToEdit.faculty = document.getElementById('editStudentFaculty').value;
+                    saveStudents();
+                    renderStudents();
+                    editStudentModal.classList.remove('show');
+                }
+            });
+
+            closeEditStudentModalBtn.addEventListener('click', () => {
+                editStudentModal.classList.remove('show');
+            });
+            
+            const printModal = document.getElementById('printModal');
+            const openPrintModalBtn = document.getElementById('openPrintModalBtn');
+            const closePrintModalBtn = document.getElementById('closePrintModalBtn');
+            const printAllBtn = document.getElementById('printAllBtn');
+            const printSelectedBtn = document.getElementById('printSelectedBtn');
+            const printOptionsContainer = document.getElementById('printOptionsContainer');
+
+            if(openPrintModalBtn) openPrintModalBtn.addEventListener('click', () => {
+                renderPrintOptions();
+                printModal.classList.add('show');
+            });
+
+            if(closePrintModalBtn) closePrintModalBtn.addEventListener('click', () => {
+                printModal.classList.remove('show');
+            });
+
+            if(printAllBtn) printAllBtn.addEventListener('click', () => {
+                createPrintContent(students);
+                window.print();
+                printModal.classList.remove('show');
+            });
+
+            if(printSelectedBtn) printSelectedBtn.addEventListener('click', () => {
+                const selectedIds = Array.from(printOptionsContainer.querySelectorAll('.print-checkbox:checked')).map(cb => cb.getAttribute('data-student-id'));
+                const selectedStudents = students.filter(s => selectedIds.includes(s.id));
+                createPrintContent(selectedStudents);
+                window.print();
+                printModal.classList.remove('show');
+            });
+
+            const themeModal = document.getElementById('themeModal');
+            const openThemeModalBtn = document.getElementById('openThemeModalBtn');
+            const closeThemeModalBtn = document.getElementById('closeThemeModalBtn');
+            const lightModeBtn = document.getElementById('lightModeBtn');
+            const darkModeBtn = document.getElementById('darkModeBtn');
+            const accentColorPicker = document.getElementById('accentColorPicker');
+            const fontColorPicker = document.getElementById('fontColorPicker');
+            const cardBgColorPicker = document.getElementById('cardBgColorPicker');
+            const bgImageFileInp = document.getElementById('bgImageFile');
+            const removeBgBtn = document.getElementById('removeBgBtn');
+
+            if(openThemeModalBtn) openThemeModalBtn.addEventListener('click', () => {
+                themeModal.classList.add('show');
+            });
+
+            if(closeThemeModalBtn) closeThemeModalBtn.addEventListener('click', () => {
+                themeModal.classList.remove('show');
+            });
+
+            if(lightModeBtn) lightModeBtn.addEventListener('click', () => applyTheme('light'));
+            if(darkModeBtn) darkModeBtn.addEventListener('click', () => applyTheme('dark'));
+            if(accentColorPicker) accentColorPicker.addEventListener('input', (e) => applyAccentColor(e.target.value));
+            if(fontColorPicker) fontColorPicker.addEventListener('input', (e) => applyFontColor(e.target.value));
+            if(cardBgColorPicker) cardBgColorPicker.addEventListener('input', (e) => applyCardBgColor(e.target.value));
+            
+            if(bgImageFileInp) bgImageFileInp.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        applyBackground(event.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            if(removeBgBtn) removeBgBtn.addEventListener('click', () => {
+                applyBackground(null);
+            });
+            
+            const chatbotButton = document.getElementById('chatbot-button');
+            const chatbotWindow = document.getElementById('chatbot-window');
+            const closeChatbotBtn = document.getElementById('close-chatbot-btn');
+            const sendBtn = document.getElementById('send-btn');
+            const chatbotInputField = document.getElementById('chatbot-input-field');
+            
+            if(chatbotButton) chatbotButton.addEventListener('click', () => {
+                chatbotWindow.classList.toggle('active');
+            });
+
+            if(closeChatbotBtn) closeChatbotBtn.addEventListener('click', () => {
+                chatbotWindow.classList.remove('active');
+            });
+            
+            if(sendBtn) sendBtn.addEventListener('click', () => {
+                const userMessage = chatbotInputField.value.trim();
+                if (userMessage) {
+                    appendMessage(userMessage, 'user');
+                    chatbotInputField.value = '';
+                    handleChatbotResponse(userMessage);
+                }
+            });
+
+            if(chatbotInputField) chatbotInputField.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendBtn.click();
+                }
+            });
+
+            // Mặc định hiển thị tab giới thiệu
+            switchTab('intro');
+        });
+    </script>
+</body>
+</html>
