@@ -4,9 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>QUẢN LÝ THÔNG TIN & ĐIỂM CHO SV (FOXSTUDIO)</title>
-    <link rel="icon" type="image/png" href="https://uploads.onecompiler.io/43u4wb3ft/43unfu266/Black%20and%20White%20Circle%20Class%20Logo.png">
+     <link rel="icon" type="image/png" href="https://uploads.onecompiler.io/43u4wb3ft/43unfu266/Black%20and%20White%20Circle%20Class%20Logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
-
     <style>
         :root {
             --bg-color: #0f172a;
@@ -23,17 +22,14 @@
         body.light-mode {
             --bg-color: #f1f5f9;
             --text-color: #0f172a;
-            /* Thay đổi màu nền thẻ và sidebar thành trong suốt */
-            --card-bg: rgba(255, 255, 255, 0.45); 
+            --card-bg: rgba(255, 255, 255, 0.45);
             --sidebar-bg: rgba(255, 255, 255, 0.35);
-            /* Thay đổi màu viền */
             --border-color: rgba(203, 213, 225, 0.5);
             --input-bg: #e2e8f0;
             --input-border: #cbd5e1;
             --accent-color: #2563eb;
             --main-font-color: var(--text-color);
         }
-        /* CSS cho hiệu ứng Glassmorphism ở chế độ sáng */
         body.light-mode .sidebar,
         body.light-mode .modal-content,
         body.light-mode .student-card,
@@ -87,7 +83,7 @@
             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
             transition: all .3s;
         }
-        .btn-primary[disabled] { opacity: .5; cursor: not-allowed; }
+        .btn-primary[disabled], .btn-primary.disabled { opacity: .5; cursor: not-allowed; }
         .btn-secondary {
             display: flex; align-items: center; justify-content: center;
             background-color: var(--secondary-color); color: var(--text-color);
@@ -116,23 +112,23 @@
         .btn-icon-danger:hover { color: rgb(248 113 113 / 1); background: rgba(239,68,68,.1); }
         .btn-icon-edit { color: rgb(251 191 36); padding: 0.375rem; border-radius: 0.375rem; transition: all .15s; }
         .btn-icon-edit:hover { color: rgb(253 224 71); background: rgba(251,191,36,.1); }
-        
+
         .text-accent { color: var(--accent-color); }
         .bg-card-bg { background-color: var(--card-bg); }
         .border-main { border-color: var(--border-color); }
         .text-main-font { color: var(--main-font-color); }
-        
+
         .th-style { padding: 0.75rem 1rem; color: var(--main-font-color); opacity: 0.8; font-weight: 600; }
         .td-style { padding: 0.875rem 1rem; color: var(--main-font-color); }
         .course-table-wrap { overflow-x: auto; }
         .course-table-wrap table { min-width: 600px; }
 
-        /* Sidebar Styles */
         .sidebar {
             background-color: var(--sidebar-bg);
             transition: transform 0.3s ease-in-out;
             box-shadow: 2px 0 5px rgba(0,0,0,0.5);
             z-index: 50;
+            display: flex; flex-direction: column;
         }
         .sidebar-link {
             display: flex;
@@ -161,7 +157,6 @@
         }
         .sidebar-backdrop.active { display: block; }
 
-        /* Nút cố định */
         .fixed-buttons {
             position: fixed;
             bottom: 1rem;
@@ -171,14 +166,10 @@
             flex-direction: column;
             gap: 1rem;
         }
-        .fixed-buttons button {
-            transition: transform 0.2s;
-        }
         .fixed-buttons button:hover {
             transform: scale(1.1);
         }
 
-        /* Modal Styles */
         .modal {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -200,7 +191,6 @@
         }
         .modal-close-btn:hover { color: var(--accent-color); }
 
-        /* Chatbot Styles */
         .chatbot-container {
             position: fixed; bottom: 6rem; right: 1rem; z-index: 100; width: 100%; max-width: 380px; height: 500px;
             display: none; flex-direction: column; background-color: var(--card-bg);
@@ -219,14 +209,9 @@
         .user-message { background-color: #3b82f6; color: white; align-self: flex-end; border-bottom-right-radius: 0.25rem; }
         .bot-message { background-color: var(--secondary-color); color: var(--text-color); align-self: flex-start; border-bottom-left-radius: 0.25rem; }
 
-        /* Print Styles */
-       /* Print Styles */
         @media print {
             body { background-color: white !important; color: black !important; padding: 0 !important; margin: 0 !important; }
-            
-            /* ĐÃ THÊM 'main' VÀO ĐÂY ĐỂ ẨN NỘI DUNG TRANG KHI IN */
             header, main, .sidebar, .fixed-buttons, footer, .modal { display: none !important; }
-            
             #printContent { display: block !important; position: static !important; width: 100% !important; }
             .print-page { page-break-after: always; box-shadow: none !important; border: none !important; background-color: white !important; color: black !important; padding: 20px !important; }
             .print-page:last-child { page-break-after: avoid; }
@@ -245,29 +230,61 @@
 </head>
 
 <body class="flex">
+    <!-- Giao diện HTML không thay đổi -->
     <aside id="sidebar" class="sidebar fixed top-0 left-0 h-full w-64 bg-card-bg shadow-lg transform -translate-x-full md:translate-x-0 transition-transform duration-300 z-50">
-        <div class="p-4 flex items-center justify-between border-b border-main">
-            <h2 class="text-2xl font-bold text-accent">Menu</h2>
-            <button id="close-sidebar-btn" class="md:hidden text-2xl text-main-font leading-none">&times;</button>
+        <div>
+            <div class="p-4 flex items-center justify-between border-b border-main">
+                <h2 class="text-2xl font-bold text-accent">Menu</h2>
+                <button id="close-sidebar-btn" class="md:hidden text-2xl text-main-font leading-none">&times;</button>
+            </div>
+            <nav class="p-4 space-y-2">
+                <a href="#" class="sidebar-link active" data-tab="intro">
+                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                    Giới Thiệu
+                </a>
+                <a href="#" class="sidebar-link" data-tab="add-student">
+                     <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+                    Thêm Sinh Viên
+                </a>
+                <a href="#" class="sidebar-link" data-tab="student-list">
+                     <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    Danh Sách SV
+                </a>
+                <a href="#" class="sidebar-link" data-tab="contact">
+                     <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    Liên Hệ
+                </a>
+
+                <a href="game.html" class="sidebar-link">
+                    <img src="https://icons.veryicon.com/png/o/miscellaneous/effevo/game-49.png" class="h-8 w-8 rounded-full">
+                    Trò Chơi
+                </a>
+
+
+                <a href="#" class="sidebar-link" data-tab="donate">
+                    <img src="https://cdn-icons-png.flaticon.com/512/176/176696.png"class="h-8 w-8 rounded-full">
+                    DONATE 
+                </a>
+
+            </nav>
         </div>
-        <nav class="p-4 space-y-2">
-            <a href="#" class="sidebar-link active" data-tab="intro">
-                <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-                Giới Thiệu
-            </a>
-            <a href="#" class="sidebar-link" data-tab="add-student">
-                 <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-                Thêm Sinh Viên
-            </a>
-            <a href="#" class="sidebar-link" data-tab="student-list">
-                 <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                Danh Sách SV
-            </a>
-            <a href="#" class="sidebar-link" data-tab="contact">
-                 <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                Liên Hệ
-            </a>
-        </nav>
+        <!-- PHẦN DÀNH CHO ĐĂNG NHẬP -->
+        <div class="p-4 mt-auto border-t border-main">
+            <div id="auth-container" class="text-center">
+                 <button id="login-btn" class="w-full btn-secondary bg-red-500 hover:bg-red-600 flex items-center justify-center">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="m6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.218 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C44.438 36.372 48 30.656 48 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
+                    <span>Đăng nhập với Google</span>
+                </button>
+            </div>
+            <!-- user-info có class hidden nhưng phải có sẵn class items-center -->
+            <div id="user-info" class="hidden items-center">
+                <img id="user-avatar" class="w-10 h-10 rounded-full mr-3" src="" alt="User Avatar">
+                <div class="text-sm">
+                    <p id="user-name" class="font-semibold text-main-font"></p>
+                    <button id="logout-btn" class="text-red-400 hover:text-red-300">Đăng xuất</button>
+                </div>
+            </div>
+        </div>
     </aside>
     <div id="sidebar-backdrop" class="sidebar-backdrop md:hidden"></div>
 
@@ -276,7 +293,7 @@
             <button id="open-sidebar-btn" class="md:hidden fixed top-4 left-4 z-40 p-2 bg-card-bg rounded-md text-main-font">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
             </button>
-            <img src="https://uploads.onecompiler.io/43u4wb3ft/43unfu266/Black%20and%20White%20Circle%20Class%20Logo.png" alt="Logo" class="h-24 w-24 mb-4 sm:mb-0 sm:mr-4 rounded-xl">
+            <img src="https://uploads.onecompiler.io/43u4wb3ft/43unfu266/Black%20and%20White%20Circle%20Class%20Logo.png" alt="Logo" class="h-24 w-24 mb-4 sm:mb-0 sm:mr-4 rounded-full">
             <div>
                 <h1 class="text-4xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-300 py-2">QUẢN LÝ THÔNG TIN & ĐIỂM SV</h1>
                 <p class="text-sm text-gray-400 mt-1">BẢN THỬ NGHIỆM CỦA FOXSTUDIO</p>
@@ -285,24 +302,26 @@
 
         <main id="tab-content" class="w-full max-w-4xl mx-auto p-4 space-y-8">
             </main>
-        
+
         <footer class="w-full max-w-4xl mx-auto mt-12 text-center text-main-font">
             <p class="text-sm text-slate-500">Phát triển bởi FOXSTUDIO.</p>
             <p class="text-sm text-slate-500">MỌI THẮC MẮC LIÊN HỆ : nguyenvanhai.10a3@gmail.</p>
         </footer>
     </div>
-    
+
     <div class="fixed-buttons">
         <button id="openThemeModalBtn" class="p-3 rounded-full bg-yellow-500/80 shadow-lg cursor-pointer hover:bg-yellow-500 transition-all">
             <img src="https://png.pngtree.com/element_our/20200702/ourmid/pngtree-settings-icon-image_2290382.jpg" alt="Settings Icon" class="h-8 w-8 rounded-full">
         </button>
-        
+
         <div id="chatbot-button" class="p-3 rounded-full bg-sky-500/80 shadow-lg cursor-pointer hover:bg-sky-500 transition-all">
             <img src="https://www.shutterstock.com/image-vector/chat-bot-icon-virtual-smart-600nw-2478937553.jpg" alt="Chatbot Icon" class="h-8 w-8 rounded-full">
         </div>
-
-        <button id="openPrintModalBtn" class="btn-secondary rounded-full p-3 shadow-lg print-button">
-            <img src="https://png.pngtree.com/png-vector/20190115/ourmid/pngtree-vector-printer-icon-png-image_316875.jpg" alt="Print Icon" class="h-8 w-8 rounded-full">
+        <!-- NÚT IN CẦN KIỂM TRA ĐĂNG NHẬP -->
+        <button id="openPrintModalBtn" class="btn-secondary bg-sky-500/80  rounded-full p-3 shadow-lg print-button">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
         </button>
     </div>
 
@@ -321,7 +340,7 @@
             </div>
         </div>
     </div>
-    
+
     <div id="editStudentModal" class="modal">
         <div class="modal-content">
             <button id="closeEditStudentModalBtn" class="modal-close-btn">
@@ -352,7 +371,7 @@
             </form>
         </div>
     </div>
-    
+
     <div id="themeModal" class="modal">
         <div class="modal-content">
             <button id="closeThemeModalBtn" class="modal-close-btn">
@@ -415,39 +434,47 @@
 
     <div id="printContent" style="display: none;"></div>
 
+    <!-- THÊM THƯ VIỆN FIREBASE AUTH -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+
     <script>
+        // KHỞI TẠO FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyA6MzA5S1JxABA6PPsiH1dV_JjMpoqkxIM",
+            authDomain: "quan-ly-sinh-vien-e3307.firebaseapp.com",
+            projectId: "quan-ly-sinh-vien-e3307",
+            storageBucket: "quan-ly-sinh-vien-e3307.appspot.com",
+            messagingSenderId: "1021646737843",
+            appId: "1:1021646737843:web:7edb6d3be5257c4d10fbc6"
+        };
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const studentsCollection = db.collection('students');
+
+        firebase.auth().useDeviceLanguage();
+
         // ======= Config & State =======
-        const APP_ID = 'html-gpa-multi-student';
-        const STORAGE_KEY = APP_ID + ':students';
-        const THEME_KEY = APP_ID + ':theme';
-        const BG_KEY = APP_ID + ':background';
-        const ACCENT_KEY = APP_ID + ':accent';
-        const FONT_COLOR_KEY = APP_ID + ':font-color';
-        const CARD_BG_KEY = APP_ID + ':card-bg';
-        let students = loadStudents();
+        const THEME_KEY = 'student-app:theme';
+        const BG_KEY = 'student-app:background';
+        const ACCENT_KEY = 'student-app:accent';
+        const FONT_COLOR_KEY = 'student-app:font-color';
+        const CARD_BG_KEY = 'student-app:card-bg';
+        // Đã xóa CUSTOM_AVATAR_KEY
 
-        // ======= Helpers (storage) =======
-        function loadStudents() {
-            try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-            catch { return []; }
-        }
-        function saveStudents() { localStorage.setItem(STORAGE_KEY, JSON.stringify(students)); }
+        let students = [];
+        let isLoggedIn = false;
 
-        // ======= Theme & Background Management =======
+        // ======= Các hàm giao diện và tính toán (giữ nguyên) =======
         function applyTheme(theme) {
             const body = document.body;
-            if (theme === 'light') {
-                body.classList.add('light-mode');
-            } else {
-                body.classList.remove('light-mode');
-            }
+            if (theme === 'light') { body.classList.add('light-mode'); }
+            else { body.classList.remove('light-mode'); }
             localStorage.setItem(THEME_KEY, theme);
         }
-        function loadTheme() {
-            const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
-            applyTheme(savedTheme);
-        }
-
+        function loadTheme() { applyTheme(localStorage.getItem(THEME_KEY) || 'dark'); }
         function applyAccentColor(color) {
             document.documentElement.style.setProperty('--accent-color', color);
             localStorage.setItem(ACCENT_KEY, color);
@@ -458,7 +485,6 @@
             const accentColorPicker = document.getElementById('accentColorPicker');
             if(accentColorPicker) accentColorPicker.value = savedColor;
         }
-        
         function applyFontColor(color) {
             document.documentElement.style.setProperty('--main-font-color', color);
             localStorage.setItem(FONT_COLOR_KEY, color);
@@ -469,7 +495,6 @@
             const fontColorPicker = document.getElementById('fontColorPicker');
             if(fontColorPicker) fontColorPicker.value = savedColor;
         }
-
         function applyCardBgColor(color) {
              document.documentElement.style.setProperty('--card-bg', color);
             localStorage.setItem(CARD_BG_KEY, color);
@@ -480,7 +505,6 @@
             const cardBgColorPicker = document.getElementById('cardBgColorPicker');
             if(cardBgColorPicker) cardBgColorPicker.value = savedColor;
         }
-
         function applyBackground(url) {
             const body = document.body;
             if (url) {
@@ -495,54 +519,16 @@
         }
         function loadBackground() {
             const savedBg = localStorage.getItem(BG_KEY);
-            if (savedBg) {
-                applyBackground(savedBg);
-            }
+            if (savedBg) { applyBackground(savedBg); }
         }
-        
-        // ======= Quy đổi điểm theo yêu cầu =======
-        function avgToLetter(d) {
-            if (d >= 10) return 'A';
-            else if (d >= 9) return 'A';
-            else if (d >= 8.5) return 'A';
-            else if (d >= 7.8) return 'B+';
-            else if (d >= 7.0) return 'B';
-            else if (d >= 6.3) return 'C+';
-            else if (d >= 5.5) return 'C';
-            else if (d >= 4.8) return 'D+';
-            else if (d >= 4.0) return 'D';
-            return 'F';
-        }
-        function avgToPoint4(d) {
-            if (d >= 10) return 4.0;
-            else if (d>= 7.8) return 3.5;
-            else if (d >= 7.0) return 3.0;
-            else if (d >= 6.3) return 2.5;
-            else if (d >= 5.5) return 2.0;
-            else if (d>= 4.8) return 1.5;
-            else if (d >= 4.0) return 1.;
-            return 0.0;
-        }
-        function gradeToPoint(g) {
-            const gradeStr = String(g).toUpperCase().trim();
-            const numeric = parseFloat(gradeStr);
-            if (!isNaN(numeric) && numeric >= 0 && numeric <= 4) return numeric;
-            switch (gradeStr) {
-                case 'A': return 4.0;
-                case 'B+': return 3.5;
-                case 'B': return 3.0;
-                case 'C+': return 2.5;
-                case 'C': return 2.0;
-                case 'D+': return 1.5;
-                case 'D': return 1.0;
-                case 'F': return 0.0;
-                default: return NaN;
-            }
-        }
+        function avgToLetter(d){if(d>=10)return'A';else if(d>=9)return'A';else if(d>=8.5)return'A';else if(d>=7.8)return'B+';else if(d>=7.0)return'B';else if(d>=6.3)return'C+';else if(d>=5.5)return'C';else if(d>=4.8)return'D+';else if(d>=4.0)return'D';return'F';}
+        function avgToPoint4(d){if(d>=10)return 4.0;else if(d>=7.8)return 3.5;else if(d>=7.0)return 3.0;else if(d>=6.3)return 2.5;else if(d>=5.5)return 2.0;else if(d>=4.8)return 1.5;else if(d>=4.0)return 1.;return 0.0;}
+        function gradeToPoint(g){const t=String(g).toUpperCase().trim(),e=parseFloat(t);if(!isNaN(e)&&e>=0&&e<=4)return e;switch(t){case"A":return 4;case"B+":return 3.5;case"B":return 3;case"C+":return 2.5;case"C":return 2;case"D+":return 1.5;case"D":return 1;case"F":return 0;default:return NaN}}
 
-        // ======= GPA Calculation =======
         function computeGPA(studentCourses) {
-            if (!studentCourses.length) return 0;
+            if (!Array.isArray(studentCourses) || studentCourses.length === 0) {
+                return 0;
+            }
             let totalPoints = 0, totalCredits = 0;
             studentCourses.forEach(c => {
                 const cred = parseFloat(c.credits);
@@ -554,158 +540,280 @@
             });
             return totalCredits === 0 ? 0 : (totalPoints / totalCredits);
         }
-        
+
         const tabContentHtml = {
             'intro': `
                 <section id="intro" class="content-section active bg-card-bg shadow-2xl rounded-xl p-6">
                     <h2 class="text-2xl font-semibold mb-6 text-accent">Giới Thiệu</h2>
                     <div class="space-y-4 text-main-font">
-                        <p>
-                            Chào mừng bạn đến với ứng dụng tính điểm và quản lý thông tin sinh viên của FOXSTUDIO. Ứng dụng này được thiết kế để giúp bạn dễ dàng theo dõi kết quả học tập, tính toán điểm trung bình (GPA) và lưu trữ thông tin cá nhân.
-                        </p>
-                        <p>
-                            Với giao diện trực quan, bạn có thể thêm nhiều sinh viên, cập nhật điểm các môn học và xem điểm GPA được tính tự động. Tính năng in ấn cho phép bạn xuất bản in thông tin và kết quả học tập ra file PDF một cách nhanh chóng.
-                        </p>
+                        <p>Chào mừng bạn đến với ứng dụng quản lý sinh viên của FOXSTUDIO. Dữ liệu trên trang này được đồng bộ cho tất cả người dùng.</p>
+                        <p>Bạn cần đăng nhập để có thể thực hiện các thao tác Thêm, Sửa, Xóa.</p>
+                    </div>
+                    <div class="mt-8">
+                        <h3 class="text-xl font-semibold mb-4 text-main-font">Thống kê nhanh</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+                            <div class="bg-slate-700/50 p-4 rounded-lg"><p class="text-sm text-slate-400">Tổng số sinh viên</p><p id="totalStudents" class="text-3xl font-bold text-accent">0</p></div>
+                            <div class="bg-slate-700/50 p-4 rounded-lg"><p class="text-sm text-slate-400">Tổng số tín chỉ</p><p id="totalCredits" class="text-3xl font-bold text-accent">0</p></div>
+                            <div class="bg-slate-700/50 p-4 rounded-lg"><p class="text-sm text-slate-400">GPA trung bình</p><p id="avgGpa" class="text-3xl font-bold text-accent">0.00</p></div>
+                        </div>
                     </div>
                     <div class="qr-code-section flex flex-col sm:flex-row items-center justify-center gap-6 mt-10">
-                        <img src="https://uploads.onecompiler.io/43u4wb3ft/43unfu266/APPTTSV.png"
-                            alt="QR Code"
-                            class="h-[150px] w-[150px] rounded-xl">
-                        <h2 class="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-300">
-                            QUÉT QR CODE NGAY ĐỂ <br class="hidden sm:block"> TẢI APP MOBILE.
-                        </h2>
+                        <img src="https://uploads.onecompiler.io/43u4wb3ft/43unfu266/APPTTSV.png" alt="QR Code" class="h-[150px] w-[150px] rounded-xl">
+                        <h2 class="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-300">QUÉT QR CODE NGAY ĐỂ <br class="hidden sm:block"> TẢI APP MOBILE.</h2>
                     </div>
                 </section>`,
             'add-student': `
                 <section id="add-student" class="content-section bg-card-bg shadow-2xl rounded-xl p-6">
                     <h2 class="text-2xl font-semibold mb-6 text-accent">Thêm Sinh Viên Mới</h2>
                     <form id="studentForm" class="space-y-3">
-                        <div>
-                            <label class="block text-sm font-medium text-main-font mb-1">Họ và Tên</label>
-                            <input type="text" id="newStudentName" class="input-style" placeholder="Nguyễn Văn A" required />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-main-font mb-1">Mã Số Sinh Viên</label>
-                            <input type="text" id="newStudentId" class="input-style" placeholder="20201234" required />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-main-font mb-1">Lớp</label>
-                            <input type="text" id="newStudentClass" class="input-style" placeholder="CNTT-K65" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-main-font mb-1">Khoa/Ngành</label>
-                            <input type="text" id="newStudentFaculty" class="input-style" placeholder="Công nghệ Thông tin" />
-                        </div>
+                        <div><label class="block text-sm font-medium text-main-font mb-1">Họ và Tên</label><input type="text" id="newStudentName" class="input-style" placeholder="Nguyễn Văn A" required /></div>
+                        <div><label class="block text-sm font-medium text-main-font mb-1">Mã Số Sinh Viên</label><input type="text" id="newStudentId" class="input-style" placeholder="20201234" required /></div>
+                        <div><label class="block text-sm font-medium text-main-font mb-1">Lớp</label><input type="text" id="newStudentClass" class="input-style" placeholder="CNTT-K65" /></div>
+                        <div><label class="block text-sm font-medium text-main-font mb-1">Khoa/Ngành</label><input type="text" id="newStudentFaculty" class="input-style" placeholder="Công nghệ Thông tin" /></div>
                         <p id="studentError" class="text-red-400 text-sm"></p>
-                        <div class="pt-2">
-                            <button type="submit" class="w-full btn-primary" id="btnAddNewStudent">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v-1.5m0 0a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0-.75.75v3m7.5 7.5v-1.5m0 0a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0-.75.75v3m7.5 7.5v-1.5m0 0a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0-.75.75v3M4.5 9.75a2.25 2.25 0 1 0 0 4.5h15a2.25 2.25 0 1 0 0-4.5h-15Z" />
-                                </svg>
-                                <span class="ml-2">Thêm Sinh Viên</span>
-                            </button>
-                        </div>
+                        <div class="pt-2"><button type="submit" class="w-full btn-primary" id="btnAddNewStudent"><img src="https://cdn-icons-png.flaticon.com/512/992/992651.png" class="w-5 h-5"><span class="ml-2">Thêm Sinh Viên</span></button></div>
                     </form>
                 </section>`,
             'student-list': `
                 <section id="student-list" class="content-section">
                     <div class="bg-card-bg shadow-2xl rounded-xl p-6 mb-6">
                         <h2 class="text-2xl font-semibold mb-6 text-accent">Quản Lý Sinh Viên</h2>
+                        <div class="mb-6"><input type="text" id="searchInput" class="input-style" placeholder="🔍 Tìm kiếm theo tên hoặc MSSV..."></div>
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                             <div class="flex items-center gap-2">
                                 <label for="sortOrder" class="text-sm font-medium text-main-font">Sắp xếp theo:</label>
-                                <select id="sortOrder" class="input-style-sm">
-                                    <option value="name-asc">Tên (A-Z)</option>
-                                    <option value="name-desc">Tên (Z-A)</option>
-                                    <option value="gpa-desc">GPA (Cao - Thấp)</option>
-                                    <option value="gpa-asc">GPA (Thấp - Cao)</option>
-                                </select>
-                            </div>
-                            <div class="flex gap-2">
-                                <button id="exportDataBtn" class="btn-outline-blue text-sm">Xuất Dữ liệu</button>
-                                <label for="importFile" class="btn-outline-blue text-sm cursor-pointer">
-                                    Nhập Dữ liệu
-                                    <input type="file" id="importFile" accept=".json" class="hidden">
-                                </label>
+                                <select id="sortOrder" class="input-style-sm"><option value="name-asc">Tên (A-Z)</option><option value="name-desc">Tên (Z-A)</option><option value="gpa-desc">GPA (Cao - Thấp)</option><option value="gpa-asc">GPA (Thấp - Cao)</option></select>
                             </div>
                         </div>
                     </div>
                     <div id="studentsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
                 </section>`,
             'contact': `
-    <section id="contact" class="content-section bg-card-bg shadow-2xl rounded-xl p-6">
-        <h2 class="text-2xl font-semibold mb-6 text-accent">Liên Hệ</h2>
-        <p class="text-sm text-main-font mb-4">Kết nối với chúng tôi qua các kênh sau để được hỗ trợ và cập nhật thông tin mới nhất!</p>
-        <div class="flex flex-col sm:flex-row gap-4">
-            <a href="https://www.facebook.com/nguyen.hai.225063" target="_blank" rel="noopener" class="w-full btn-outline-blue flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mr-2">
-                    <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.58-1.333h2.42v-4h-3.998c-2.761 0-4.002 1.147-4.002 3.205v1.795z"/>
-                </svg>
-                <span>Liên hệ Facebook</span>
-            </a>
-            <a href="mailto:nguyenvanhai.10a3@gmail.com" class="w-full btn-outline-red flex items-center justify-center">
-                <img src="https://png.pngtree.com/element_our/png/20181213/inbox-vector-icon-png_267453.jpg" alt="Email Icon" class="w-6 h-6 mr-2 rounded-full" >
-                <span>Gửi Email</span>
-            </a>
-        </div>
-    </section>
-    <section class="bg-card-bg shadow-2xl rounded-xl p-6">
-        <div class="flex items-center mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-6 h-6 mr-2 text-red-500" viewBox="0 0 24 24">
-                <path d="M21.582,6.186c-0.23-0.86-0.908-1.538-1.768-1.768C18.25,4,12,4,12,4S5.75,4,4.186,4.418 c-0.86,0.23-1.538,0.908-1.768,1.768C2,7.75,2,12,2,12s0,4.25,0.418,5.814c0.23,0.86,0.908,1.538,1.768,1.768 C5.75,20,12,20,12,20s6.25,0,7.814-0.418c0.861-0.23,1.538-0.908,1.768-1.768C22,16.25,22,12,22,12S22,7.75,21.582,6.186z M10,15.5v-7l6,3.5L10,15.5z"/>
-            </svg>
-            <h2 class="text-2xl font-semibold text-red-500">Kênh YouTube Đề Xuất</h2>
-        </div>
-        <div>
-            <h3 class="text-xl font-semibold text-accent" id="ytName">Kênh YouTube của FOX</h3>
-            <p class="text-sm text-main-font mt-1 mb-3" id="ytDesc">Nơi chia sẻ những video hữu ích và thú vị. Hãy ghé thăm và ủng hộ nhé!</p>
-            <a id="ytUrl" href="https://www.youtube.com/channel/UCSRG41tE6J27W5SCsAVahGw" target="_blank" rel="noopener" class="btn-outline-red">Xem Kênh và Đăng ký</a>
-        </div>
-    </section>
-    <section class="bg-card-bg shadow-2xl rounded-xl p-6">
-        <div class="flex items-center mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A11.978 11.978 0 0 1 12 13.5c-2.998 0-5.74-1.1-7.843-2.918M3.284 9.747c0-.778.099-1.533.284-2.253" />
-            </svg>
-            <h2 class="text-2xl font-semibold text-blue-500">Website của trường </h2>
-        </div>
-        <div>
-            <h3 class="text-xl font-semibold text-accent" id="webName">TRANG TT CỦA TRƯỜNG ĐH PHẠM VĂN ĐỒNG</h3>
-            <p class="text-sm text-main-font mt-1 mb-3" id="webDesc">Khám phá những kiến thức bổ ích và công cụ học tập tuyệt vời tại đây!</p>
-            <a id="webUrl" href="https://www.pdu.edu.vn/" target="_blank" rel="noopener" class="btn-outline-blue">Truy cập Website</a>
-        </div>
-    </section>
-`
+                <section id="contact" class="content-section bg-card-bg shadow-2xl rounded-xl p-6">
+                    <h2 class="text-2xl font-semibold mb-6 text-accent">Liên Hệ</h2>
+                    <p class="text-sm text-main-font mb-4">Kết nối với chúng tôi qua các kênh sau để được hỗ trợ và cập nhật thông tin mới nhất!</p>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <a href="https://www.facebook.com/nguyen.hai.225063" target="_blank" rel="noopener" class="w-full btn-outline-blue flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mr-2"><path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.58-1.333h2.42v-4h-3.998c-2.761 0-4.002 1.147-4.002 3.205v1.795z"/></svg><span>Liên hệ Facebook</span></a>
+                        <a href="mailto:nguyenvanhai.10a3@gmail.com" class="w-full btn-outline-red flex items-center justify-center"><img src="https://png.pngtree.com/element_our/png/20181213/inbox-vector-icon-png_267453.jpg" alt="Email Icon" class="w-6 h-6 mr-2 rounded-full" ><span>Gửi Email</span></a>
+                    </div>
+                </section>
+                <section class="bg-card-bg shadow-2xl rounded-xl p-6">
+                    <div class="flex items-center mb-4"><svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-6 h-6 mr-2 text-red-500" viewBox="0 0 24 24"><path d="M21.582,6.186c-0.23-0.86-0.908-1.538-1.768-1.768C18.25,4,12,4,12,4S5.75,4,4.186,4.418 c-0.86,0.23-1.538,0.908-1.768,1.768C2,7.75,2,12,2,12s0,4.25,0.418,5.814c0.23,0.86,0.908,1.538,1.768,1.768 C5.75,20,12,20,12,20s6.25,0,7.814-0.418c0.861-0.23,1.538-0.908,1.768-1.768C22,16.25,22,12,22,12S22,7.75,21.582,6.186z M10,15.5v-7l6,3.5L10,15.5z"/></svg><h2 class="text-2xl font-semibold text-red-500">Kênh YouTube Đề Xuất</h2></div>
+                    <div><h3 class="text-xl font-semibold text-accent" id="ytName">Kênh YouTube của FOX</h3><p class="text-sm text-main-font mt-1 mb-3" id="ytDesc">Nơi chia sẻ những video hữu ích và thú vị. Hãy ghé thăm và ủng hộ nhé!</p><a id="ytUrl" href="https://www.youtube.com/channel/UCSRG41tE6J27W5SCsAVahGw" target="_blank" rel="noopener" class="btn-outline-red">Xem Kênh và Đăng ký</a></div>
+                </section>
+                <section class="bg-card-bg shadow-2xl rounded-xl p-6">
+                    <div class="flex items-center mb-4"><svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A11.978 11.978 0 0 1 12 13.5c-2.998 0-5.74-1.1-7.843-2.918M3.284 9.747c0-.778.099-1.533.284-2.253" /></svg><h2 class="text-2xl font-semibold text-blue-500">Website của trường </h2></div>
+                    <div><h3 class="text-xl font-semibold text-accent" id="webName">TRANG TT CỦA TRƯỜNG ĐH PHẠM VĂN ĐỒNG</h3><p class="text-sm text-main-font mt-1 mb-3" id="webDesc">Khám phá những kiến thức bổ ích và công cụ học tập tuyệt vời tại đây!</p><a id="webUrl" href="https://www.pdu.edu.vn/" target="_blank" rel="noopener" class="btn-outline-blue">Truy cập Website</a></div>
+                </section>`,
+
+                'donate': `
+                <section id="intro" class="content-section active bg-card-bg shadow-2xl rounded-xl p-6">
+                    <h2 class="text-2xl font-semibold mb-6 text-accent"> THÔNG TIN DONATE </h2>
+                    <div class="space-y-4 text-main-font">
+                        <p> AI CÓ LÒNG HẢO TÂM THÌ DONATE CHO FOXST ĐỂ FOXST CÓ KINH PHÍ DUY TRÌ WEB Ạ , TK MỌI NGƯỜI 😍😍😍.</p>
+                    </div>
+    
+                    <div class="qr-code-section flex flex-col sm:flex-row items-center justify-center gap-6 mt-10">
+                        <img src="https://uploads.onecompiler.io/43u4wb3ft/43zhnjy7e/IMG_20251013_215110%5B1%5D(1).jpg" alt="QR Code" class="h-[150px] w-[150px] rounded-xl">
+                        <h2 class="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-300">QUÉT QR CODE NGAY ĐỂ  <br class="hidden sm:block"> DONATE .</h2>
+                    </div>
+                </section>`,
+
+            
         };
 
-        function switchTab(tabName) {
-            const sidebarLinks = document.querySelectorAll('.sidebar-link');
-            sidebarLinks.forEach(link => {
-                link.classList.remove('active');
-            });
-            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-            
-            const tabContentContainer = document.getElementById('tab-content');
-            tabContentContainer.innerHTML = tabContentHtml[tabName];
-            
-            if (tabName === 'student-list') {
-                const sortOrderSelect = document.getElementById('sortOrder');
-                const exportDataBtn = document.getElementById('exportDataBtn');
-                const importFileInp = document.getElementById('importFile');
-                sortOrderSelect.addEventListener('change', (e) => sortStudents(e.target.value));
-                exportDataBtn.addEventListener('click', exportData);
-                importFileInp.addEventListener('change', importData);
+        // ======= Các hàm CRUD với FIREBASE =======
+
+        function setupRealtimeListener() {
+            studentsCollection.onSnapshot(snapshot => {
+                const updatedStudents = [];
+                snapshot.forEach(doc => {
+                    updatedStudents.push({ id: doc.id, ...doc.data() });
+                });
+
+                students = updatedStudents;
                 renderStudents();
-            } else if (tabName === 'add-student') {
-                const studentForm = document.getElementById('studentForm');
-                studentForm.addEventListener('submit', addNewStudent);
+                updateDashboard();
+                console.log("Dữ liệu được cập nhật Real-time!");
+            }, error => {
+                console.error("Lỗi khi lắng nghe dữ liệu Firebase: ", error);
+            });
+        }
+
+        function addNewStudent(e) {
+            e.preventDefault();
+            if (!isLoggedIn) {
+                console.error("Lỗi: Vui lòng đăng nhập để thêm sinh viên.");
+                alert("Vui lòng đăng nhập để thêm sinh viên.");
+                return;
+            }
+
+            const studentError = document.getElementById('studentError');
+            const newStudentId = document.getElementById('newStudentId').value.trim();
+            const existingStudent = students.find(s => s.studentId === newStudentId);
+
+            if (existingStudent) {
+                studentError.textContent = 'Mã số sinh viên đã tồn tại.';
+                return;
+            }
+
+            const newStudentData = {
+                name: document.getElementById('newStudentName').value,
+                studentId: newStudentId,
+                class: document.getElementById('newStudentClass').value,
+                faculty: document.getElementById('newStudentFaculty').value,
+                courses: []
+            };
+
+            studentsCollection.add(newStudentData).then(() => {
+                console.log('Thêm sinh viên mới thành công!');
+                document.getElementById('studentForm').reset();
+                studentError.textContent = '';
+            }).catch(error => {
+                console.error("Lỗi khi thêm sinh viên: ", error);
+                alert('Có lỗi xảy ra, không thể thêm sinh viên.');
+            });
+        }
+
+        function updateStudentData(studentId, updatedData) {
+            if (!isLoggedIn) { alert("Vui lòng đăng nhập để sửa đổi."); return; }
+            studentsCollection.doc(studentId).update(updatedData).catch(error => {
+                console.error("Lỗi khi cập nhật: ", error);
+            });
+        }
+
+        function deleteStudent(studentId) {
+            if (!isLoggedIn) { alert("Vui lòng đăng nhập để xóa."); return; }
+             if (confirm('Bạn có chắc chắn muốn xóa sinh viên này? Thao tác này không thể hoàn tác.')) {
+                studentsCollection.doc(studentId).delete().catch(error => {
+                    console.error("Lỗi khi xóa sinh viên: ", error);
+                });
             }
         }
+
+        // ======= Các hàm xác thực người dùng =======
+
+        function signInWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            provider.addScope('email');
+
+            // Dùng signInWithPopup thay vì signInWithRedirect
+            auth.signInWithPopup(provider)
+                .then((result) => {
+                    console.log("Đăng nhập bằng Pop-up thành công!", result.user.displayName);
+                })
+                .catch((error) => {
+                    if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+                         console.warn("Người dùng đã đóng hoặc hủy yêu cầu đăng nhập.");
+                    } else {
+                        console.error("Đăng nhập thất bại:", error.code, error.message);
+                        alert(`Đăng nhập thất bại: ${error.message}.`);
+                    }
+                });
+        }
+
+        function signOut() {
+            auth.signOut().then(() => {
+                // Đã xóa: localStorage.removeItem(CUSTOM_AVATAR_KEY);
+            }).catch(error => console.error("Đăng xuất thất bại:", error));
+        }
         
+        // HÀM XỬ LÝ TRẠNG THÁI XÁC THỰC (ĐÃ ĐƠN GIẢN HÓA)
+        function handleAuthStateChange(user) {
+            const authContainer = document.getElementById('auth-container');
+            const userInfo = document.getElementById('user-info');
+            const userAvatar = document.getElementById('user-avatar'); // Lấy element avatar
+
+            isLoggedIn = !!user; // Cập nhật trạng thái đăng nhập
+
+            if (user) {
+                // User is signed in
+                authContainer.classList.add('hidden');
+                
+                // Đảm bảo user-info được hiển thị là FLEX
+                userInfo.classList.remove('hidden');
+                userInfo.style.display = 'flex'; 
+
+                // Đặt URL Ảnh từ Google
+                userAvatar.src = user.photoURL;
+                
+                // 2. Thiết lập ảnh dự phòng nếu ảnh gốc lỗi (onerror)
+                userAvatar.onerror = function() {
+                    userAvatar.src = 'https://img.icons8.com/material-rounded/48/user--v1.png'; 
+                    userAvatar.onerror = null; // Ngăn chặn loop vô hạn
+                };
+
+                document.getElementById('user-name').textContent = user.displayName || 'Người dùng';
+            } else {
+                // User is signed out
+                authContainer.classList.remove('hidden');
+                userInfo.classList.add('hidden');
+                userInfo.style.display = 'none'; // ĐẢM BẢO ẨN
+                // Reset ảnh dự phòng khi đăng xuất
+                userAvatar.src = '';
+                userAvatar.onerror = null;
+            }
+
+            // QUAN TRỌNG: Cập nhật lại giao diện (danh sách sinh viên và form thêm mới)
+            const currentTab = document.querySelector('.sidebar-link.active')?.dataset.tab;
+            if (currentTab === 'student-list') {
+                renderStudents(); // RENDER LẠI ĐỂ CẬP NHẬT NÚT SỬA/XÓA
+            }
+            if (currentTab === 'add-student') {
+                const addStudentBtn = document.getElementById('btnAddNewStudent');
+                if (addStudentBtn) {
+                    isLoggedIn ? addStudentBtn.classList.remove('disabled') : addStudentBtn.classList.add('disabled');
+                }
+            }
+        }
+
+
+        // ======= Các hàm logic và render khác (Không thay đổi) =======
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.sidebar-link').forEach(link => link.classList.remove('active'));
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            document.getElementById('tab-content').innerHTML = tabContentHtml[tabName];
+
+            if (tabName === 'intro') {
+                updateDashboard();
+            } else if (tabName === 'student-list') {
+                const searchInput = document.getElementById('searchInput');
+                document.getElementById('sortOrder').addEventListener('change', (e) => sortStudents(e.target.value));
+                searchInput.addEventListener('input', () => {
+                    const searchTerm = searchInput.value.toLowerCase().trim();
+                    const filteredStudents = students.filter(student =>
+                        student.name.toLowerCase().includes(searchTerm) ||
+                        student.studentId.toLowerCase().includes(searchTerm)
+                    );
+                    renderStudents(filteredStudents);
+                });
+                renderStudents(); // Hiển thị sinh viên sau khi chuyển tab
+            } else if (tabName === 'add-student') {
+                document.getElementById('studentForm').addEventListener('submit', addNewStudent);
+                const addStudentBtn = document.getElementById('btnAddNewStudent');
+                // Cập nhật trạng thái nút Thêm Sinh Viên khi chuyển tab
+                if (addStudentBtn) {
+                    isLoggedIn ? addStudentBtn.classList.remove('disabled') : addStudentBtn.classList.add('disabled');
+                }
+            }
+        }
+
         function attachEventListeners() {
-            // Edit student
+            // Tối ưu hóa: Loại bỏ các listener cũ trước khi thêm mới
+            const studentsContainer = document.getElementById('studentsContainer');
+            if(studentsContainer) {
+                const clone = studentsContainer.cloneNode(true);
+                studentsContainer.parentNode.replaceChild(clone, studentsContainer);
+                // Gán lại studentsContainer bằng clone mới
+                // studentsContainer = clone; // Không thể gán lại const, nhưng không cần thiết trong trường hợp này.
+            }
+
+
+            // Gắn lại các listeners cho các nút điều khiển mới được render
             document.querySelectorAll('[data-edit-student]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
+                    if (!isLoggedIn) { alert("Vui lòng đăng nhập để sửa."); return; }
                     const studentId = e.currentTarget.getAttribute('data-edit-student');
                     const studentToEdit = students.find(s => s.id === studentId);
                     if (studentToEdit) {
@@ -718,33 +826,29 @@
                     }
                 });
             });
-            
-            // Delete student
+
             document.querySelectorAll('[data-del-student]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const studentId = e.currentTarget.getAttribute('data-del-student');
-                    students = students.filter(s => s.id !== studentId);
-                    saveStudents();
-                    renderStudents();
+                    deleteStudent(studentId);
                 });
             });
 
-            // Delete course
             document.querySelectorAll('[data-del-course]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
+                    if (!isLoggedIn) { alert("Vui lòng đăng nhập để xóa môn học."); return; }
                     const courseId = e.currentTarget.getAttribute('data-del-course');
                     const studentCard = e.currentTarget.closest('.student-card');
-                    const studentId = studentCard.querySelector('.course-form').getAttribute('data-student-id');
+                    const studentId = studentCard.querySelector('.course-form')?.getAttribute('data-student-id');
                     const student = students.find(s => s.id === studentId);
                     if (student) {
+                        if (!Array.isArray(student.courses)) student.courses = [];
                         student.courses = student.courses.filter(c => c.id !== courseId);
-                        saveStudents();
-                        renderStudents();
+                        updateStudentData(student.id, { courses: student.courses });
                     }
                 });
             });
 
-            // Toggle detailed score input
             document.querySelectorAll('.toggleDetailed').forEach(toggle => {
                 toggle.addEventListener('change', (e) => {
                     const form = e.currentTarget.closest('.course-form');
@@ -760,232 +864,154 @@
                 });
             });
 
-            // Calculate detailed score
             document.querySelectorAll('.detailedArea input[type="number"]').forEach(input => {
                 input.addEventListener('input', (e) => {
                     const form = e.currentTarget.closest('.course-form');
-                    const hs1Inp = form.querySelector('.hs1Inp');
-                    const hs2Inp = form.querySelector('.hs2Inp');
-                    const thiInp = form.querySelector('.thiInp');
-                    const detailedResult = form.querySelector('.detailedResult');
-
-                    const hs1 = parseFloat(hs1Inp.value) || 0;
-                    const hs2 = parseFloat(hs2Inp.value) || 0;
-                    const thi = parseFloat(thiInp.value) || 0;
-
+                    const hs1 = parseFloat(form.querySelector('.hs1Inp').value) || 0;
+                    const hs2 = parseFloat(form.querySelector('.hs2Inp').value) || 0;
+                    const thi = parseFloat(form.querySelector('.thiInp').value) || 0;
                     const avg = (hs1 + hs2 * 2 + thi * 3) / 6;
                     const grade = avgToLetter(avg);
                     const point4 = avgToPoint4(avg);
-
-                    detailedResult.innerHTML = `
-                        <p>Điểm trung bình (hệ 10): <strong>${avg.toFixed(2)}</strong></p>
-                        <p>Điểm chữ: <strong>${grade}</strong></p>
-                        <p>Điểm hệ 4: <strong>${point4.toFixed(1)}</strong></p>
-                    `;
+                    const detailedResult = form.querySelector('.detailedResult');
+                    detailedResult.innerHTML = `<p>Điểm trung bình (hệ 10): <strong>${avg.toFixed(2)}</strong></p><p>Điểm chữ: <strong>${grade}</strong></p><p>Điểm hệ 4: <strong>${point4.toFixed(1)}</strong></p>`;
                     detailedResult.classList.remove('hidden');
                 });
             });
 
-            // Add course
             document.querySelectorAll('.course-form').forEach(form => {
                 form.addEventListener('submit', (e) => {
                     e.preventDefault();
+                    if (!isLoggedIn) { alert("Vui lòng đăng nhập để thêm môn học."); return; }
                     const studentId = e.target.getAttribute('data-student-id');
                     const student = students.find(s => s.id === studentId);
+                    if (!student) return;
                     const courseError = e.target.querySelector('.course-error');
                     courseError.textContent = '';
-
-                    const courseName = e.target.querySelector('.courseNameInp').value;
-                    const credits = parseFloat(e.target.querySelector('.creditsInp').value);
-
                     let newCourse = {
                         id: 'c-' + Date.now(),
-                        name: courseName,
-                        credits: credits,
+                        name: e.target.querySelector('.courseNameInp').value,
+                        credits: parseFloat(e.target.querySelector('.creditsInp').value),
                     };
-
                     const isDetailed = e.target.querySelector('.toggleDetailed').checked;
                     if (isDetailed) {
                         const hs1 = parseFloat(e.target.querySelector('.hs1Inp').value);
                         const hs2 = parseFloat(e.target.querySelector('.hs2Inp').value);
                         const thi = parseFloat(e.target.querySelector('.thiInp').value);
-                        if (isNaN(hs1) || isNaN(hs2) || isNaN(thi)) {
-                            courseError.textContent = 'Vui lòng nhập đầy đủ các điểm chi tiết.';
-                            return;
-                        }
+                        if(isNaN(hs1)||isNaN(hs2)||isNaN(thi)){courseError.textContent='Vui lòng nhập đầy đủ các điểm chi tiết.';return}
                         const avg = (hs1 + hs2 * 2 + thi * 3) / 6;
-                        newCourse = { ...newCourse, hs1: hs1, hs2: hs2, thi: thi, avg: avg, grade: avgToLetter(avg), point4: avgToPoint4(avg) };
+                        newCourse = { ...newCourse, hs1, hs2, thi, avg, grade: avgToLetter(avg), point4: avgToPoint4(avg) };
                     } else {
-                        const gradeInput = e.target.querySelector('.gradeInput');
-                        const avgInput = e.target.querySelector('.avgInput');
-                        const gradeValue = gradeInput.value.trim();
-                        const avgValue = avgInput.value.trim();
-                        if (!gradeValue && !avgValue) {
-                            courseError.textContent = 'Vui lòng nhập điểm tổng kết hoặc điểm học phần.';
-                            return;
-                        }
+                        const gradeValue = e.target.querySelector('.gradeInput').value.trim();
+                        const avgValue = e.target.querySelector('.avgInput').value.trim();
+                        if(!gradeValue&&!avgValue){courseError.textContent='Vui lòng nhập điểm tổng kết hoặc điểm học phần.';return}
                         if (gradeValue) {
                             const point4 = gradeToPoint(gradeValue);
-                            if (isNaN(point4)) {
-                                courseError.textContent = 'Điểm chữ không hợp lệ. Vui lòng nhập đúng định dạng (A, B+, C, v.v.)';
-                                return;
-                            }
-                            newCourse = { ...newCourse, grade: gradeValue, point4: point4 };
+                            if(isNaN(point4)){courseError.textContent='Điểm chữ không hợp lệ.';return}
+                            newCourse = { ...newCourse, grade: gradeValue, point4 };
                         } else if (avgValue) {
                             const avg = parseFloat(avgValue);
-                            if (isNaN(avg) || avg < 0 || avg > 10) {
-                                courseError.textContent = 'Điểm học phần không hợp lệ. Vui lòng nhập từ 0 đến 10.';
-                                return;
-                            }
-                            newCourse = { ...newCourse, avg: avg, grade: avgToLetter(avg), point4: avgToPoint4(avg) };
+                            if(isNaN(avg)||avg<0||avg>10){courseError.textContent='Điểm học phần không hợp lệ.';return}
+                            newCourse = { ...newCourse, avg, grade: avgToLetter(avg), point4: avgToPoint4(avg) };
                         }
                     }
+
+                    if (!student.courses || !Array.isArray(student.courses)) {
+                        student.courses = [];
+                    }
                     student.courses.push(newCourse);
-                    saveStudents();
-                    renderStudents();
+
+                    updateStudentData(student.id, { courses: student.courses });
                     form.reset();
                     courseError.textContent = '';
                 });
             });
         }
-        
-        function addNewStudent(e) {
-            e.preventDefault();
-            const newStudentId = document.getElementById('newStudentId').value.trim();
-            const existingStudent = students.find(s => s.studentId === newStudentId);
-            const studentError = document.getElementById('studentError');
-            if (existingStudent) {
-                studentError.textContent = 'Mã số sinh viên đã tồn tại. Vui lòng nhập mã số khác.';
-                return;
-            }
-            const newStudent = {
-                id: 's-' + Date.now(),
-                name: document.getElementById('newStudentName').value,
-                studentId: newStudentId,
-                class: document.getElementById('newStudentClass').value,
-                faculty: document.getElementById('newStudentFaculty').value,
-                courses: []
-            };
-            students.push(newStudent);
-            saveStudents();
-            document.getElementById('studentForm').reset();
-            studentError.textContent = '';
-            alert('Đã thêm sinh viên mới thành công!');
+        function updateDashboard() {
+            const totalStudentsEl = document.getElementById('totalStudents');
+            const totalCreditsEl = document.getElementById('totalCredits');
+            const avgGpaEl = document.getElementById('avgGpa');
+            if (!totalStudentsEl) return;
+            const totalStudents = students.length;
+            let totalCredits = 0;
+            let totalGpaPoints = 0;
+            students.forEach(student => {
+                if (student.courses && Array.isArray(student.courses)) {
+                    student.courses.forEach(course => {
+                        totalCredits += parseFloat(course.credits) || 0;
+                    });
+                }
+                totalGpaPoints += computeGPA(student.courses || []);
+            });
+            const avgGpa = totalStudents > 0 ? (totalGpaPoints / totalStudents) : 0;
+            totalStudentsEl.textContent = totalStudents;
+            totalCreditsEl.textContent = totalCredits;
+            avgGpaEl.textContent = avgGpa.toFixed(2);
         }
 
         function sortStudents(sortType) {
+            let studentsToSort = [...students];
             switch(sortType) {
-                case 'name-asc':
-                    students.sort((a, b) => a.name.localeCompare(b.name));
-                    break;
-                case 'name-desc':
-                    students.sort((a, b) => b.name.localeCompare(a.name));
-                    break;
-                case 'gpa-desc':
-                    students.sort((a, b) => computeGPA(b.courses) - computeGPA(a.courses));
-                    break;
-                case 'gpa-asc':
-                    students.sort((a, b) => computeGPA(a.courses) - computeGPA(b.courses));
-                    break;
+                case 'name-asc': studentsToSort.sort((a, b) => a.name.localeCompare(b.name)); break;
+                case 'name-desc': studentsToSort.sort((a, b) => b.name.localeCompare(a.name)); break;
+                case 'gpa-desc': studentsToSort.sort((a, b) => computeGPA(b.courses) - computeGPA(a.courses)); break;
+                case 'gpa-asc': studentsToSort.sort((a, b) => computeGPA(a.courses) - computeGPA(b.courses)); break;
             }
-            renderStudents();
+            renderStudents(studentsToSort);
         }
 
-        function exportData() {
-            const dataStr = JSON.stringify(students, null, 2);
-            const blob = new Blob([dataStr], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'students_data.json';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        function importData(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    try {
-                        const importedStudents = JSON.parse(event.target.result);
-                        if (Array.isArray(importedStudents)) {
-                            students = importedStudents;
-                            saveStudents();
-                            renderStudents();
-                            alert('Nhập dữ liệu thành công!');
-                        } else {
-                            alert('Tệp JSON không hợp lệ. Vui lòng chọn tệp đúng định dạng.');
-                        }
-                    } catch (error) {
-                        alert('Lỗi khi xử lý tệp JSON.');
-                        console.error(error);
-                    }
-                };
-                reader.readAsText(file);
-            }
-        }
-
-        function renderStudents() {
+        function renderStudents(studentsToRender = students) {
             const studentsContainer = document.getElementById('studentsContainer');
             if (!studentsContainer) return;
             studentsContainer.innerHTML = '';
-            if (students.length === 0) {
-                studentsContainer.innerHTML = `<p class="text-main-font text-center py-10 w-full col-span-full">Chưa có sinh viên nào. Vui lòng thêm sinh viên mới.</p>`;
+            if (studentsToRender.length === 0) {
+                studentsContainer.innerHTML = `<p class="text-main-font text-center py-10 w-full col-span-full">Chưa có sinh viên nào hoặc không tìm thấy kết quả.</p>`;
                 return;
             }
-            students.forEach(student => {
+            studentsToRender.forEach(student => {
+                const totalCredits = (student.courses || []).reduce((sum, course) => sum + (parseFloat(course.credits) || 0), 0);
                 const gpa = computeGPA(student.courses);
+                const status = gpa >= 2.0 ? 'Đậu' : 'Trượt';
+                const statusColor = gpa >= 2.0 ? 'text-emerald-400' : 'text-red-400';
+
+                // QUAN TRỌNG: Ẩn/hiện các nút SỬA/XÓA và form THÊM MÔN HỌC dựa trên trạng thái đăng nhập (isLoggedIn)
+                const controlsVisibilityClass = isLoggedIn ? '' : 'hidden';
+
                 const cardHtml = `
                     <div class="student-card bg-card-bg shadow-2xl rounded-xl p-6 relative">
-                        <div class="flex items-center absolute top-2 right-2">
-                            <button class="btn-icon-edit" data-edit-student="${student.id}" title="Chỉnh sửa thông tin sinh viên">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                </svg>
-                            </button>
-                            <button class="btn-icon-danger" data-del-student="${student.id}" title="Xóa sinh viên này">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
+                        <div class="flex items-center absolute top-2 right-2 ${controlsVisibilityClass}">
+                            <button class="btn-icon-edit" data-edit-student="${student.id}" title="Chỉnh sửa"><svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg></button>
+                            <button class="btn-icon-danger" data-del-student="${student.id}" title="Xóa"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
                         </div>
                         <div class="mb-6 pb-4 border-b border-border-color">
                             <h3 class="text-xl font-semibold text-accent">${student.name}</h3>
                              <p class="text-sm text-main-font">MSSV: ${student.studentId}</p>
                              <p class="text-sm text-main-font">Lớp: ${student.class || 'N/A'}</p>
                              <p class="text-sm text-main-font">Khoa: ${student.faculty || 'N/A'}</p>
-                             <div class="mt-4 bg-slate-700 px-4 py-2 rounded-lg shadow">
-                                 <span class="text-main-font font-medium">GPA: </span>
-                                 <span class="text-2xl font-bold text-emerald-400">${gpa.toFixed(2)}</span>
+
+                             <div class="mt-4 grid grid-cols-2 gap-2 text-center">
+                                <div class="bg-slate-700/50 px-4 py-2 rounded-lg shadow">
+                                    <span class="text-main-font font-medium block text-sm opacity-75">GPA</span>
+                                    <span class="text-2xl font-bold text-emerald-400">${gpa.toFixed(2)}</span>
+                                </div>
+                                <div class="bg-slate-700/50 px-4 py-2 rounded-lg shadow">
+                                    <span class="text-main-font font-medium block text-sm opacity-75">Tín chỉ T.Lũy</span>
+                                    <span class="text-2xl font-bold text-sky-400">${totalCredits}</span>
+                                </div>
+                             </div>
+                             <div class="mt-2 text-center">
+                                <span class="text-lg font-bold ${statusColor}">${status}</span>
                              </div>
                         </div>
-                        <div class="space-y-4 mb-6">
+                        <div class="space-y-4 mb-6 ${controlsVisibilityClass}">
                             <h4 class="text-lg font-semibold text-accent">Thêm Môn Học</h4>
                             <form class="course-form" data-student-id="${student.id}">
-                                <div>
-                                    <label class="block text-sm font-medium text-main-font mb-1">Tên Môn Học</label>
-                                    <input type="text" class="courseNameInp input-style" placeholder="VD: Lập trình Web" required />
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-main-font mb-1">Số Tín Chỉ</label>
-                                    <input type="number" class="creditsInp input-style" placeholder="VD: 3" min="0.5" step="0.5" required />
-                                </div>
-                                <div class="flex items-center space-x-2 pt-2">
-                                    <input type="checkbox" class="toggleDetailed h-4 w-4 rounded border-slate-600 text-accent focus:ring-accent"/>
-                                    <label class="text-sm font-medium text-main-font">Tính điểm chi tiết</label>
-                                </div>
+                                <div><label class="block text-sm font-medium text-main-font mb-1">Tên Môn Học</label><input type="text" class="courseNameInp input-style" placeholder="VD: Lập trình Web" required /></div>
+                                <div><label class="block text-sm font-medium text-main-font mb-1">Số Tín Chỉ</label><input type="number" class="creditsInp input-style" placeholder="VD: 3" min="0.5" step="0.5" required /></div>
+                                <div class="flex items-center space-x-2 pt-2"><input type="checkbox" class="toggleDetailed h-4 w-4 rounded border-slate-600 text-accent focus:ring-accent"/><label class="text-sm font-medium text-main-font">Tính điểm chi tiết</label></div>
                                 <div class="simpleGradeArea space-y-3">
-                                    <div>
-                                        <label class="block text-sm font-medium text-main-font mb-1">Điểm Tổng Kết (A-F, 0-4)</label>
-                                        <input type="text" class="gradeInput input-style" placeholder="VD: A, B+, 3.0" />
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-main-font mb-1">Điểm Học Phần (0-10)</label>
-                                        <input type="number" class="avgInput input-style" placeholder="VD: 7.8" step="0.1" min="0" max="10" />
-                                    </div>
+                                    <div><label class="block text-sm font-medium text-main-font mb-1">Điểm Tổng Kết (A-F, 0-4)</label><input type="text" class="gradeInput input-style" placeholder="VD: A, B+, 3.0" /></div>
+                                    <div><label class="block text-sm font-medium text-main-font mb-1">Điểm Học Phần (0-10)</label><input type="number" class="avgInput input-style" placeholder="VD: 7.8" step="0.1" min="0" max="10" /></div>
                                 </div>
                                 <div class="detailedArea space-y-4 p-4 border border-slate-700 rounded-lg mt-2 bg-slate-800/50 hidden">
                                     <h5 class="text-base font-semibold text-accent mb-3">Chi Tiết Điểm</h5>
@@ -997,206 +1023,38 @@
                                     <div class="detailedResult mt-3 p-3 bg-slate-700/50 rounded-md text-sm hidden"></div>
                                 </div>
                                 <p class="course-error text-red-400 text-sm mt-1"></p>
-                                <button type="submit" class="w-full btn-primary">Thêm Môn</button>
+                                <button type="submit" class="w-full btn-primary mt-2">Thêm Môn</button>
                             </form>
                         </div>
-                        <div class="course-table-wrap">
-                            ${renderCourseTable(student.courses)}
-                        </div>
-                    </div>
-                `;
+                        <div class="course-table-wrap">${renderCourseTable(student.courses)}</div>
+                    </div>`;
                 studentsContainer.innerHTML += cardHtml;
             });
             attachEventListeners();
         }
 
         function renderCourseTable(courses, forPrint = false) {
-            if (!courses.length) {
-                return forPrint ? `<p class="text-center py-4 text-black">Chưa có môn học nào.</p>` : `<p class="text-main-font text-center py-4">Chưa có môn học nào.</p>`;
+            if (!courses || !courses.length) {
+                return `<p class="text-main-font text-center py-4">Chưa có môn học nào.</p>`;
             }
             const rows = courses.map(c => `
                 <tr class="border-b ${forPrint ? 'border-gray-300' : 'border-slate-700 hover:bg-slate-700/50'}">
                     <td class="${forPrint ? '' : 'td-style'}">${c.name}</td>
                     <td class="${forPrint ? '' : 'td-style'} text-center">${c.credits}</td>
-                    <td class="${forPrint ? '' : 'td-style'} text-center">${(typeof c.hs1 === 'number') ? c.hs1.toFixed(1) : '-'}</td>
-                    <td class="${forPrint ? '' : 'td-style'} text-center">${(typeof c.hs2 === 'number') ? c.hs2.toFixed(1) : '-'}</td>
-                    <td class="${forPrint ? '' : 'td-style'} text-center">${(typeof c.thi === 'number') ? c.thi.toFixed(1) : '-'}</td>
-                    <td class="${forPrint ? '' : 'td-style'} text-center">${(typeof c.avg === 'number') ? c.avg.toFixed(2) : '-'}</td>
-                    <td class="${forPrint ? '' : 'td-style'} text-center">${c.grade || '-'}</td>
-                    <td class="${forPrint ? '' : 'td-style'} text-center">${(typeof c.point4 === 'number') ? c.point4.toFixed(1) : ((gradeToPoint(c.grade) ?? NaN) || 0).toFixed(1)}</td>
-                    <td class="${forPrint ? 'hidden' : 'td-style text-center'}">
-                        <button class="btn-icon-danger" data-del-course="${c.id}" title="Xóa môn này">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12.56 0c.342.052.682.107 1.022.166m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                            </svg>
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-            return `
-                <div class="course-table-wrap">
-                    <table class="w-full min-w-max text-left">
-                        <thead class="border-b border-border-color">
-                            <tr>
-                                <th class="${forPrint ? '' : 'th-style'}">Tên Môn</th>
-                                <th class="${forPrint ? '' : 'th-style'} text-center">Tín Chỉ</th>
-                                <th class="${forPrint ? '' : 'th-style'} text-center">HS1</th>
-                                <th class="${forPrint ? '' : 'th-style'} text-center">HS2</th>
-                                <th class="${forPrint ? '' : 'th-style'} text-center">Điểm Thi</th>
-                                <th class="${forPrint ? '' : 'th-style'} text-center">Điểm HP</th>
-                                <th class="${forPrint ? '' : 'th-style'} text-center">Chữ</th>
-                                <th class="${forPrint ? '' : 'th-style'} text-center">Hệ 4</th>
-                                <th class="${forPrint ? 'hidden' : 'th-style text-center'}">Hành Động</th>
-                            </tr>
-                        </thead>
-                        <tbody>${rows}</tbody>
-                    </table>
-                </div>
-            `;
-        }
-        
-        function renderPrintOptions() {
-            const printOptionsContainer = document.getElementById('printOptionsContainer');
-            if(!printOptionsContainer) return;
-            printOptionsContainer.innerHTML = '';
-            students.forEach(student => {
-                const optionHtml = `
-                    <div class="flex items-center space-x-3">
-                        <input type="checkbox" class="print-checkbox h-5 w-5 rounded border-slate-600 text-accent focus:ring-accent" data-student-id="${student.id}" />
-                        <label class="text-main-font font-medium">${student.name} - ${student.studentId}</label>
-                    </div>
-                `;
-                printOptionsContainer.innerHTML += optionHtml;
-            });
-
-            const checkboxes = printOptionsContainer.querySelectorAll('.print-checkbox');
-            const printSelectedBtn = document.getElementById('printSelectedBtn');
-            if(printSelectedBtn) {
-                checkboxes.forEach(cb => {
-                    cb.addEventListener('change', () => {
-                        const hasSelection = Array.from(checkboxes).some(c => c.checked);
-                        printSelectedBtn.disabled = !hasSelection;
-                    });
-                });
-                printSelectedBtn.disabled = !Array.from(checkboxes).some(c => c.checked);
-            }
+                    <td class="${forPrint ? '' : 'td-style'} text-center">${(typeof c.hs1 === 'number')?c.hs1.toFixed(1):'-'}</td>
+                    <td class="${forPrint ? '' : 'td-style'} text-center">${(typeof c.hs2 === 'number')?c.hs2.toFixed(1):'-'}</td>
+                    <td class="${forPrint ? '' : 'td-style'} text-center">${(typeof c.thi === 'number')?c.thi.toFixed(1):'-'}</td>
+                    <td class="${forPrint ? '' : 'td-style'} text-center">${(typeof c.avg === 'number')?c.avg.toFixed(2):'-'}</td>
+                    <td class="${forPrint ? '' : 'td-style'} text-center">${c.grade||'-'}</td>
+                    <td class="${forPrint ? '' : 'td-style'} text-center">${(typeof c.point4==='number')?c.point4.toFixed(1):((gradeToPoint(c.grade)??NaN)||0).toFixed(1)}</td>
+                    <td class="${(forPrint || !isLoggedIn) ?'hidden':'td-style text-center'}"><button class="btn-icon-danger" data-del-course="${c.id}" title="Xóa môn này"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12.56 0c.342.052.682.107 1.022.166m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg></button></td>
+                </tr>`).join('');
+            return `<div class="course-table-wrap"><table class="w-full min-w-max text-left"><thead><tr class="border-b border-border-color"><th class="${forPrint?'':'th-style'}">Tên Môn</th><th class="${forPrint?'':'th-style'} text-center">Tín Chỉ</th><th class="${forPrint?'':'th-style'} text-center">HS1</th><th class="${forPrint?'':'th-style'} text-center">HS2</th><th class="${forPrint?'':'th-style'} text-center">Điểm Thi</th><th class="${forPrint?'':'th-style'} text-center">Điểm HP</th><th class="${forPrint?'':'th-style'} text-center">Chữ</th><th class="${forPrint?'':'th-style'} text-center">Hệ 4</th><th class="${(forPrint || !isLoggedIn)?'hidden':'th-style text-center'}">Hành Động</th></tr></thead><tbody>${rows}</tbody></table></div>`;
         }
 
-        function createPrintContent(selectedStudents) {
-            const printContentArea = document.getElementById('printContent');
-            if(!printContentArea) return;
-            printContentArea.innerHTML = '';
-            
-            selectedStudents.forEach(student => {
-                const gpa = computeGPA(student.courses);
-                // Đã chỉnh sửa lại nội dung trang in cho gọn gàng hơn
-                const printCardHtml = `
-                    <div class="print-page p-6 mb-6">
-                        <div class="print-info">
-                            <h3 class="text-xl font-semibold">Họ và Tên: <strong>${student.name}</strong></h3>
-                            <p><strong>Mã Số Sinh Viên:</strong> ${student.studentId}</p>
-                            <p><strong>Lớp:</strong> ${student.class || 'N/A'}</p>
-                            <p><strong>Khoa:</strong> ${student.faculty || 'N/A'}</p>
-                            <p><strong>GPA tích lũy:</strong> <span class="font-bold text-emerald-400">${gpa.toFixed(2)}</span></p>
-                        </div>
-                        
-                        <div class="course-table-wrap mt-4">
-                            ${renderCourseTable(student.courses, true)}
-                        </div>
+        function renderPrintOptions(){const t=document.getElementById("printOptionsContainer");if(!t)return;t.innerHTML="",students.forEach(e=>{t.innerHTML+=`<div class="flex items-center space-x-3"><input type="checkbox" class="print-checkbox h-5 w-5 rounded border-slate-600 text-accent focus:ring-accent" data-student-id="${e.id}" /><label class="text-main-font font-medium">${e.name} - ${e.studentId}</label></div>`});const e=t.querySelectorAll(".print-checkbox"),n=document.getElementById("printSelectedBtn");n&&(e.forEach(t=>t.addEventListener("change",()=>{n.disabled=!Array.from(e).some(t=>t.checked)})),n.disabled=!Array.from(e).some(t=>t.checked))}
+        function createPrintContent(t){const e=document.getElementById("printContent");if(!e)return;e.innerHTML="",t.forEach(t=>{const n=computeGPA(t.courses);e.innerHTML+=`<div class="print-page p-6 mb-6"><div class="print-info"><h3 class="text-xl font-semibold">Họ và Tên: <strong>${t.name}</strong></h3><p><strong>Mã Số Sinh Viên:</strong> ${t.studentId}</p><p><strong>Lớp:</strong> ${t.class||"N/A"}</p><p><strong>Khoa:</strong> ${t.faculty||"N/A"}</p><p><strong>GPA tích lũy:</strong> <span class="font-bold text-emerald-400">${n.toFixed(2)}</span></p></div><div class="course-table-wrap mt-4">${renderCourseTable(t.courses,!0)}</div></div>`})}
 
-                        </div>
-                `;
-                printContentArea.innerHTML += printCardHtml;
-            });
-        }
-        
-        function addNewStudent(e) {
-            e.preventDefault();
-            const newStudentIdInp = document.getElementById('newStudentId');
-            const newStudentNameInp = document.getElementById('newStudentName');
-            const newStudentClassInp = document.getElementById('newStudentClass');
-            const newStudentFacultyInp = document.getElementById('newStudentFaculty');
-            const studentError = document.getElementById('studentError');
-
-            if (!newStudentIdInp || !newStudentNameInp) return;
-
-            const newStudentId = newStudentIdInp.value.trim();
-            const existingStudent = students.find(s => s.studentId === newStudentId);
-            
-            if (existingStudent) {
-                studentError.textContent = 'Mã số sinh viên đã tồn tại. Vui lòng nhập mã số khác.';
-                return;
-            }
-            const newStudent = {
-                id: 's-' + Date.now(),
-                name: newStudentNameInp.value,
-                studentId: newStudentId,
-                class: newStudentClassInp.value,
-                faculty: newStudentFacultyInp.value,
-                courses: []
-            };
-            students.push(newStudent);
-            saveStudents();
-            document.getElementById('studentForm').reset();
-            studentError.textContent = '';
-            alert('Đã thêm sinh viên mới thành công!');
-        }
-
-        function sortStudents(sortType) {
-            switch(sortType) {
-                case 'name-asc':
-                    students.sort((a, b) => a.name.localeCompare(b.name));
-                    break;
-                case 'name-desc':
-                    students.sort((a, b) => b.name.localeCompare(a.name));
-                    break;
-                case 'gpa-desc':
-                    students.sort((a, b) => computeGPA(b.courses) - computeGPA(a.courses));
-                    break;
-                case 'gpa-asc':
-                    students.sort((a, b) => computeGPA(a.courses) - computeGPA(b.courses));
-                    break;
-            }
-            renderStudents();
-        }
-
-        function exportData() {
-            const dataStr = JSON.stringify(students, null, 2);
-            const blob = new Blob([dataStr], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'students_data.json';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        function importData(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    try {
-                        const importedStudents = JSON.parse(event.target.result);
-                        if (Array.isArray(importedStudents)) {
-                            students = importedStudents;
-                            saveStudents();
-                            renderStudents();
-                            alert('Nhập dữ liệu thành công!');
-                        } else {
-                            alert('Tệp JSON không hợp lệ. Vui lòng chọn tệp đúng định dạng.');
-                        }
-                    } catch (error) {
-                        alert('Lỗi khi xử lý tệp JSON.');
-                        console.error(error);
-                    }
-                };
-                reader.readAsText(file);
-            }
-        }
-        
         function appendMessage(text, type) {
             const chatbotMessages = document.getElementById('chatbot-messages');
             if(!chatbotMessages) return;
@@ -1240,212 +1098,84 @@
             appendMessage(response, 'bot');
         }
 
-        // Thay thế hàm cũ trong thẻ <script> của file index.html
-
-async function getGeminiResponse(query) {
-    // Điểm cuối API giờ là endpoint do Vercel tự động tạo ra từ file api/chat.js
-    const API_ENDPOINT = '/api/chat'; 
-
-    const currentYear = new Date().getFullYear();
-    const contextualQuery = `Năm hiện tại là ${currentYear}. Vui lòng trả lời câu hỏi sau: ${query}`;
-
-    try {
-        const response = await fetch(API_ENDPOINT, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            // Gửi câu hỏi của người dùng trong body để backend có thể nhận được
-            body: JSON.stringify({ query: contextualQuery }) 
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`Lỗi từ server: ${errorData.error}`);
-        }
-        
-        const data = await response.json();
-
-        // Lấy nội dung text từ dữ liệu mà backend trả về
-        if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
-            return data.candidates[0].content.parts[0].text;
-        } else {
-            return "Xin lỗi, tôi không thể tạo câu trả lời cho yêu cầu này.";
-        }
-    } catch (error) {
-        console.error("Lỗi khi gọi API qua serverless function:", error);
-        return "Đã xảy ra lỗi kết nối đến chatbot. Vui lòng thử lại sau.";
-    }
-}
-        
-        document.addEventListener('DOMContentLoaded', () => {
-            const tabContentContainer = document.getElementById('tab-content');
-            
-            // Tải các tùy chỉnh giao diện
+         document.addEventListener('DOMContentLoaded', () => {
             loadTheme();
             loadAccentColor();
             loadFontColor();
             loadCardBgColor();
             loadBackground();
-            
-            // Gắn sự kiện cho Sidebar
-            const sidebarLinks = document.querySelectorAll('.sidebar-link');
-            sidebarLinks.forEach(link => {
+
+            auth.onAuthStateChanged(handleAuthStateChange);
+            setupRealtimeListener();
+
+            document.getElementById('login-btn').addEventListener('click', signInWithGoogle);
+            document.getElementById('logout-btn').addEventListener('click', signOut);
+
+            document.getElementById("openPrintModalBtn").addEventListener("click",()=>{
+                if (!isLoggedIn) { alert("Vui lòng đăng nhập để sử dụng tính năng In."); return; }
+                renderPrintOptions();
+                document.getElementById("printModal").classList.add("show");
+            });
+
+            document.querySelectorAll('.sidebar-link').forEach(link => {
                 link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    switchTab(link.dataset.tab);
-                    if (window.innerWidth < 768) {
-                        sidebar.classList.add('-translate-x-full');
-                        sidebarBackdrop.classList.remove('active');
+                    // Chỉ xử lý cho các link tab nội bộ
+                    if (link.hasAttribute('data-tab')) {
+                        e.preventDefault();
+                        switchTab(link.dataset.tab);
+                        if (window.innerWidth < 768) {
+                            document.getElementById('sidebar').classList.add('-translate-x-full');
+                            document.getElementById('sidebar-backdrop').classList.remove('active');
+                        }
                     }
+                    // Nếu không có 'data-tab', link sẽ hoạt động như link bình thường (mở game.html)
                 });
             });
 
-            const openSidebarBtn = document.getElementById('open-sidebar-btn');
-            const closeSidebarBtn = document.getElementById('close-sidebar-btn');
-            const sidebar = document.getElementById('sidebar');
-            const sidebarBackdrop = document.getElementById('sidebar-backdrop');
-            
-            openSidebarBtn.addEventListener('click', () => {
-                sidebar.classList.remove('-translate-x-full');
-                sidebarBackdrop.classList.add('active');
-            });
-            closeSidebarBtn.addEventListener('click', () => {
-                sidebar.classList.add('-translate-x-full');
-                sidebarBackdrop.classList.remove('active');
-            });
-            sidebarBackdrop.addEventListener('click', () => {
-                sidebar.classList.add('-translate-x-full');
-                sidebarBackdrop.classList.remove('active');
-            });
-            
-            // Gắn sự kiện cho các Modal
-            const editStudentModal = document.getElementById('editStudentModal');
-            const closeEditStudentModalBtn = document.getElementById('closeEditStudentModalBtn');
-            const editStudentForm = document.getElementById('editStudentForm');
-
-            editStudentForm.addEventListener('submit', (e) => {
+            document.getElementById('editStudentForm').addEventListener('submit', (e) => {
                 e.preventDefault();
                 const studentId = document.getElementById('editStudentId').value;
-                const studentToEdit = students.find(s => s.id === studentId);
-                if (studentToEdit) {
-                    studentToEdit.name = document.getElementById('editStudentName').value;
-                    studentToEdit.class = document.getElementById('editStudentClass').value;
-                    studentToEdit.faculty = document.getElementById('editStudentFaculty').value;
-                    saveStudents();
-                    renderStudents();
-                    editStudentModal.classList.remove('show');
-                }
-            });
-
-            closeEditStudentModalBtn.addEventListener('click', () => {
-                editStudentModal.classList.remove('show');
+                updateStudentData(studentId, {
+                    name: document.getElementById('editStudentName').value,
+                    class: document.getElementById('editStudentClass').value,
+                    faculty: document.getElementById('editStudentFaculty').value,
+                });
+                document.getElementById('editStudentModal').classList.remove('show');
             });
             
-            const printModal = document.getElementById('printModal');
-            const openPrintModalBtn = document.getElementById('openPrintModalBtn');
-            const closePrintModalBtn = document.getElementById('closePrintModalBtn');
-            const printAllBtn = document.getElementById('printAllBtn');
-            const printSelectedBtn = document.getElementById('printSelectedBtn');
-            const printOptionsContainer = document.getElementById('printOptionsContainer');
+            const sidebar = document.getElementById("sidebar"), sidebarBackdrop = document.getElementById("sidebar-backdrop");
+            document.getElementById("open-sidebar-btn").addEventListener("click",()=>{sidebar.classList.remove("-translate-x-full");sidebarBackdrop.classList.add("active")});
+            document.getElementById("close-sidebar-btn").addEventListener("click",()=>{sidebar.classList.add("-translate-x-full");sidebarBackdrop.classList.remove("active")});
+            sidebarBackdrop.addEventListener("click",()=>{sidebar.classList.add("-translate-x-full");sidebarBackdrop.classList.remove("active")});
 
-            if(openPrintModalBtn) openPrintModalBtn.addEventListener('click', () => {
-                renderPrintOptions();
-                printModal.classList.add('show');
-            });
-
-            if(closePrintModalBtn) closePrintModalBtn.addEventListener('click', () => {
-                printModal.classList.remove('show');
-            });
-
-            if(printAllBtn) printAllBtn.addEventListener('click', () => {
-                createPrintContent(students);
-                window.print();
-                printModal.classList.remove('show');
-            });
-
-            if(printSelectedBtn) printSelectedBtn.addEventListener('click', () => {
-                const selectedIds = Array.from(printOptionsContainer.querySelectorAll('.print-checkbox:checked')).map(cb => cb.getAttribute('data-student-id'));
-                const selectedStudents = students.filter(s => selectedIds.includes(s.id));
-                createPrintContent(selectedStudents);
-                window.print();
-                printModal.classList.remove('show');
-            });
-
-            const themeModal = document.getElementById('themeModal');
-            const openThemeModalBtn = document.getElementById('openThemeModalBtn');
-            const closeThemeModalBtn = document.getElementById('closeThemeModalBtn');
-            const lightModeBtn = document.getElementById('lightModeBtn');
-            const darkModeBtn = document.getElementById('darkModeBtn');
-            const accentColorPicker = document.getElementById('accentColorPicker');
-            const fontColorPicker = document.getElementById('fontColorPicker');
-            const cardBgColorPicker = document.getElementById('cardBgColorPicker');
-            const bgImageFileInp = document.getElementById('bgImageFile');
-            const removeBgBtn = document.getElementById('removeBgBtn');
-
-            if(openThemeModalBtn) openThemeModalBtn.addEventListener('click', () => {
-                themeModal.classList.add('show');
-            });
-
-            if(closeThemeModalBtn) closeThemeModalBtn.addEventListener('click', () => {
-                themeModal.classList.remove('show');
-            });
-
-            if(lightModeBtn) lightModeBtn.addEventListener('click', () => applyTheme('light'));
-            if(darkModeBtn) darkModeBtn.addEventListener('click', () => applyTheme('dark'));
-            if(accentColorPicker) accentColorPicker.addEventListener('input', (e) => applyAccentColor(e.target.value));
-            if(fontColorPicker) fontColorPicker.addEventListener('input', (e) => applyFontColor(e.target.value));
-            if(cardBgColorPicker) cardBgColorPicker.addEventListener('input', (e) => applyCardBgColor(e.target.value));
+            document.getElementById("closeEditStudentModalBtn").addEventListener("click",()=>document.getElementById("editStudentModal").classList.remove("show"));
             
-            if(bgImageFileInp) bgImageFileInp.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        applyBackground(event.target.result);
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-
-            if(removeBgBtn) removeBgBtn.addEventListener('click', () => {
-                applyBackground(null);
-            });
+            const printModal=document.getElementById("printModal");
+            document.getElementById("closePrintModalBtn").addEventListener("click",()=>printModal.classList.remove("show"));
+            document.getElementById("printAllBtn").addEventListener("click",()=>{createPrintContent(students);window.print();printModal.classList.remove("show")});
+            document.getElementById("printSelectedBtn").addEventListener("click",()=>{const selectedIds=Array.from(document.querySelectorAll(".print-checkbox:checked")).map(cb=>cb.dataset.studentId);const selectedStudents=students.filter(s=>selectedIds.includes(s.id));createPrintContent(selectedStudents);window.print();printModal.classList.remove("show")});
             
-            const chatbotButton = document.getElementById('chatbot-button');
-            const chatbotWindow = document.getElementById('chatbot-window');
-            const closeChatbotBtn = document.getElementById('close-chatbot-btn');
-            const sendBtn = document.getElementById('send-btn');
-            const chatbotInputField = document.getElementById('chatbot-input-field');
+            const themeModal=document.getElementById("themeModal");
+            document.getElementById("openThemeModalBtn").addEventListener("click",()=>themeModal.classList.add("show"));
+            document.getElementById("closeThemeModalBtn").addEventListener("click",()=>themeModal.classList.remove("show"));
+            document.getElementById("lightModeBtn").addEventListener("click",()=>applyTheme("light"));
+            document.getElementById("darkModeBtn").addEventListener("click",()=>applyTheme("dark"));
+            document.getElementById("accentColorPicker").addEventListener("input",e=>applyAccentColor(e.target.value));
+            document.getElementById("fontColorPicker").addEventListener("input",e=>applyFontColor(e.target.value));
+            document.getElementById("cardBgColorPicker").addEventListener("input",e=>applyCardBgColor(e.target.value));
+            document.getElementById("bgImageFile").addEventListener("change",e=>{const file=e.target.files[0];if(file){const reader=new FileReader();reader.onload=e=>applyBackground(e.target.result);reader.readAsDataURL(file)}});
+            document.getElementById("removeBgBtn").addEventListener("click",()=>applyBackground(null));
             
-            if(chatbotButton) chatbotButton.addEventListener('click', () => {
-                chatbotWindow.classList.toggle('active');
-            });
+            const chatbotWindow=document.getElementById("chatbot-window"),sendBtn=document.getElementById("send-btn"),chatbotInputField=document.getElementById("chatbot-input-field");
+            document.getElementById("chatbot-button").addEventListener("click",()=>chatbotWindow.classList.toggle("active"));
+            document.getElementById("close-chatbot-btn").addEventListener("click",()=>chatbotWindow.classList.remove("active"));
+            const sendMessage=()=>{const text=chatbotInputField.value.trim();if(text){appendMessage(text,"user");chatbotInputField.value="";handleChatbotResponse(text)}};
+            sendBtn.addEventListener("click",sendMessage);
+            chatbotInputField.addEventListener("keypress",e=>{"Enter"===e.key&&sendMessage()});
 
-            if(closeChatbotBtn) closeChatbotBtn.addEventListener('click', () => {
-                chatbotWindow.classList.remove('active');
-            });
-            
-            if(sendBtn) sendBtn.addEventListener('click', () => {
-                const userMessage = chatbotInputField.value.trim();
-                if (userMessage) {
-                    appendMessage(userMessage, 'user');
-                    chatbotInputField.value = '';
-                    handleChatbotResponse(userMessage);
-                }
-            });
-
-            if(chatbotInputField) chatbotInputField.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    sendBtn.click();
-                }
-            });
-
-            // Mặc định hiển thị tab giới thiệu
             switchTab('intro');
+            attachEventListeners();
         });
     </script>
 </body>
 </html>
-
-
-
-
