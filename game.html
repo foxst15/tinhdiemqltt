@@ -1,0 +1,924 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Student Game Hub — Nâng cấp</title>
+<!--
+  Student Game Hub - Enhanced Edition
+  - Replaced "glass" modal with a solid, blurred background design.
+  - Fixed dropdown visibility bug.
+  - Added new animations and hover effects for a more dynamic feel.
+  - Replaced Space Shooter with Tic-Tac-Toe.
+  - Replaced all native alerts/confirms with a custom modal UI.
+  - FIXED: Click-through issue caused by mouse glow effect.
+  - FIXED: Memory game symbols visibility with new fruit icons.
+  - FIXED: Flappy Bird collision detection.
+  - UPGRADED: Leaderboard is now online with Firebase Firestore.
+  - FIX: Added fallback to localStorage if Firebase anonymous auth is not enabled.
+-->
+<style>
+  @keyframes background-pan {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  :root{
+    --bg:#0b1020;
+    --card:#1e293bcc;
+    --accent1: #ff6ec7;
+    --accent2: #7df9ff;
+    --accent3: #ffd36e;
+    --muted:#99a0b0;
+    --radius: 16px;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    font-size: 16px;
+  }
+  *{box-sizing:border-box}
+  html,body{
+    height:100%; 
+    margin:0; 
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(1000px 500px at -10% -10%, rgba(255,110,199,0.1), transparent 50%),
+      radial-gradient(1200px 600px at 110% 110%, rgba(125,249,255,0.1), transparent 50%);
+    background-size: 200% 200%;
+    animation: background-pan 25s ease infinite;
+    color:#e6eef8;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    scroll-behavior: smooth;
+  }
+  .app{
+    width: 100%;
+    max-width:1200px;
+    margin:0 auto;
+    padding: 24px 16px;
+  }
+  header{
+    display:flex;
+    flex-wrap: wrap;
+    gap:16px;
+    align-items:center;
+    margin-bottom:24px;
+  }
+  .logo{
+    width:64px;height:64px;border-radius:16px;
+    background: conic-gradient(from 150deg at 50% 50%, var(--accent1), var(--accent2), var(--accent3), var(--accent1));
+    display:flex;align-items:center;justify-content:center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    font-weight:700;color:#051025;font-size:14px;
+    flex-shrink: 0;
+  }
+  h1{margin:0;font-size:22px}
+  p.lead{margin:0;color:var(--muted);font-size:14px; max-width: 40ch;}
+  .top-right{margin-left:auto;display:flex;gap:10px;align-items:center}
+  .card{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:18px;
+    box-shadow: 0 6px 18px rgba(2,6,23,0.6);
+    border:1px solid rgba(255,255,255,0.05);
+    transition: all 0.3s ease-in-out;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(800px circle at var(--mouse-x) var(--mouse-y), rgba(255, 255, 255, 0.06), transparent 40%);
+    z-index: 0;
+    opacity: 0;
+    transition: opacity 0.5s;
+    pointer-events: none; /* FIX: Allow clicks to pass through the glow effect */
+  }
+
+  .card:hover::before {
+      opacity: 1;
+  }
+  
+  .player-input-card > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .controls{display:flex;gap:10px;align-items:center}
+  input[type="text"]{padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit;min-width:220px; width: 100%;}
+  button.btn, button.ghost{
+    padding:10px 16px;border-radius:12px;border:0;cursor:pointer;font-weight:600;
+    transition: all 0.2s ease-in-out;
+    position: relative; z-index: 1;
+  }
+  button.btn{
+    background:linear-gradient(90deg,var(--accent1),var(--accent2)); color:#031226;
+    box-shadow: 0 0 15px rgba(255, 110, 199, 0.3), 0 0 15px rgba(125, 249, 255, 0.3);
+  }
+  button.btn:hover, button.ghost:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+  }
+  button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.1);color:var(--muted)}
+  .layout{display:grid;grid-template-columns: 1fr; gap:18px; margin-top:18px}
+  .games-grid{display:grid;grid-template-columns: repeat(auto-fill,minmax(240px,1fr)); gap:16px}
+  .game-card{padding:16px;border-radius:16px;min-height:140px;display:flex;flex-direction:column;justify-content:space-between;}
+  .game-card:hover { transform: translateY(-4px); }
+  .game-card .title{font-weight:700; font-size: 18px; position: relative; z-index: 1;}
+  .game-card .desc{font-size:14px;color:var(--muted); position: relative; z-index: 1;}
+  .game-card .actions{display:flex;gap:8px;align-items:center; position: relative; z-index: 1;}
+  
+  /* overlay & modal */
+  .overlay{position:fixed;inset:0;background:rgba(11, 16, 32, 0.85);backdrop-filter: blur(8px);-webkit-backdrop-filter: blur(8px);display:none;justify-content:center;align-items:center;padding:16px;z-index:60; opacity: 0; transition: opacity 0.3s ease;}
+  .overlay.visible { opacity: 1; }
+  .modal{width:100%;max-width:980px;border-radius:20px;padding:20px;background:#1e293b;box-shadow:0 20px 60px rgba(0,0,0,0.7);border: 1px solid rgba(255,255,255,0.08); transform: scale(0.95); transition: transform 0.3s ease;}
+  .overlay.visible .modal { transform: scale(1); }
+  
+  .modal-header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .modal-body{display:flex;justify-content:center;gap:12px;flex-wrap:wrap; align-items: center; position: relative; z-index: 1;}
+  canvas.game-canvas{background:#000;border-radius:10px;display:block; max-width: 100%; height: auto; image-rendering: -webkit-optimize-contrast;}
+  .select, .range{padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background-color:#0f172a;color:#e6eef8;-webkit-appearance:none;-moz-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");background-position:right .5rem center;background-repeat:no-repeat;background-size:1.5em 1.5em;padding-right:2.5rem}
+  .select option { background-color: #0f172a; color: #e6eef8;}
+  .footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;color:var(--muted);font-size:13px}
+  
+  /* Game Specific Styles */
+  .tictactoe-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .ttt-cell { width: 80px; height: 80px; background-color: rgba(0,0,0,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 3em; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
+  .ttt-cell:hover { background-color: rgba(0,0,0,0.3); }
+
+  .board2048 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background-color: #334155; padding: 10px; border-radius: 8px; width: 100%; max-width: 400px; height: auto; aspect-ratio: 1/1;}
+  .tile2048 { display: flex; align-items: center; justify-content: center; border-radius: 4px; background-color: rgba(255,255,255,0.05); font-weight: bold; font-size: 1.8em; }
+  
+  .memory-grid { display: grid; gap: 10px; max-width: 480px; margin: auto; }
+  .memory-card { aspect-ratio: 1 / 1; background-color: rgba(0,0,0,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 2.5em; cursor: pointer; transition: background-color 0.2s; color: transparent; user-select: none; }
+  .memory-card:hover { background-color: rgba(0,0,0,0.3); }
+  .memory-card.flipped, .memory-card.matched { background: linear-gradient(90deg,var(--accent2),var(--accent1)); color: #031226; }
+
+  /* small screens */
+  @media (max-width:900px){ .layout{grid-template-columns:1fr; } .top-right{display:none} .modal{width:95%}}
+  @media (max-width: 480px) { .ttt-cell { width: 60px; height: 60px; font-size: 2em; } .board2048 { gap: 6px; } .tile2048 { font-size: 1.2em; } .memory-card {font-size: 1.8em;}}
+  
+  /* colorful cards - NEW PALETTE */
+  .g1 { background: linear-gradient(135deg, rgba(192, 38, 211, 0.2), rgba(255, 110, 199, 0.15)); border-color: rgba(192, 38, 211, 0.3); } /* Quiz - Magenta */
+  .g2 { background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(110, 231, 183, 0.15)); border-color: rgba(16, 185, 129, 0.3); } /* Memory - Emerald */
+  .g3 { background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(251, 146, 60, 0.15)); border-color: rgba(239, 68, 68, 0.3); } /* Click Speed - Red/Orange */
+  .g4 { background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.15)); border-color: rgba(59, 130, 246, 0.3); } /* Snake - Blue */
+  .g5 { background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(167, 139, 250, 0.15)); border-color: rgba(139, 92, 246, 0.3); } /* TicTacToe - Violet */
+  .g6 { background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(251, 191, 36, 0.15)); border-color: rgba(245, 158, 11, 0.3); } /* Flappy - Amber */
+  .g7 { background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(244, 114, 182, 0.15)); border-color: rgba(236, 72, 153, 0.3); } /* 2048 - Pink */
+
+  .center{text-align:center}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">GAME</div>
+    <div>
+      <h1>Student Game Hub — Nâng cấp</h1>
+      <p class="lead">Giao diện mới, hiệu ứng sống động và game Tic-Tac-Toe.</p>
+    </div>
+    <div class="top-right">
+      <div class="card" style="padding:8px 10px">
+        <div style="font-size:12px;color:var(--muted)">Người chơi:</div>
+        <div id="playerNameDisplay" style="font-weight:700">— chưa đăng nhập —</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div>
+      <div class="card player-input-card" style="margin-bottom:12px; display:flex; gap:12px; align-items:center;">
+        <input id="playerNameInput" type="text" placeholder="Nhập tên (bắt buộc)" />
+        <div class="controls">
+          <button class="btn" id="btnStart">Lưu tên & Bắt đầu</button>
+          <button class="ghost" id="btnClear">Xóa</button>
+        </div>
+        <div style="margin-left:auto" class="control-row">
+          <label class="small muted">Theme</label>
+          <select id="themeSelect" class="select">
+            <option value="rainbow">Nhiều màu</option>
+            <option value="neon">Neon</option>
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="games-grid">
+        <div class="game-card g1 card">
+          <div>
+            <div class="title">Quiz — 5 câu</div>
+            <div class="desc">Trả lời nhanh, có timer.</div>
+          </div>
+          <div class="actions">
+            <select class="select" id="quizDifficulty">
+              <option value="easy">Dễ</option><option value="normal" selected>Thường</option><option value="hard">Khó</option>
+            </select>
+            <button class="btn play-btn" data-game="quiz">Chơi</button>
+          </div>
+        </div>
+
+        <div class="game-card g2 card">
+          <div>
+            <div class="title">Memory — Ghép đôi</div>
+            <div class="desc">Lật thẻ tìm cặp.</div>
+          </div>
+          <div class="actions">
+            <select class="select" id="memoryDifficulty">
+              <option value="easy">Dễ</option><option value="normal" selected>Thường</option><option value="hard">Khó</option>
+            </select>
+            <button class="btn play-btn" data-game="memory">Chơi</button>
+          </div>
+        </div>
+
+        <div class="game-card g3 card">
+          <div>
+            <div class="title">Click Speed</div>
+            <div class="desc">Nhấp thật nhiều trong 10s.</div>
+          </div>
+          <div class="actions">
+            <select class="select" id="clickDuration">
+              <option value="5">5s</option><option value="10" selected>10s</option><option value="20">20s</option>
+            </select>
+            <button class="btn play-btn" data-game="clickspeed">Chơi</button>
+          </div>
+        </div>
+
+        <div class="game-card g4 card">
+          <div>
+            <div class="title">Snake</div>
+            <div class="desc">Rắn ăn mồi kinh điển.</div>
+          </div>
+          <div class="actions">
+            <select class="select" id="snakeDifficulty">
+              <option value="easy">Chậm</option><option value="normal" selected>Trung bình</option><option value="hard">Nhanh</option>
+            </select>
+            <button class="btn play-btn" data-game="snake">Chơi</button>
+          </div>
+        </div>
+
+        <div class="game-card g6 card">
+          <div>
+            <div class="title">Flappy (mini)</div>
+            <div class="desc">Nhấn để bay, tránh chạm ống.</div>
+          </div>
+          <div class="actions">
+            <select class="select" id="flappyDifficulty">
+              <option value="easy">Dễ</option><option value="normal" selected>Thường</option><option value="hard">Khó</option>
+            </select>
+            <button class="btn play-btn" data-game="flappy">Chơi</button>
+          </div>
+        </div>
+
+        <div class="game-card g7 card">
+          <div>
+            <div class="title">2048 (mini)</div>
+            <div class="desc">Gộp số để đạt 2048.</div>
+          </div>
+          <div class="actions">
+            <button class="btn play-btn" data-game="2048">Chơi</button>
+          </div>
+        </div>
+        
+        <div class="game-card g5 card">
+          <div>
+            <div class="title">Tic-Tac-Toe</div>
+            <div class="desc">Cờ caro 3x3 với máy.</div>
+          </div>
+          <div class="actions">
+            <button class="btn play-btn" data-game="tictactoe">Chơi</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="side">
+      <div class="card settings">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><strong>Cài đặt chung</strong><div class="muted small">Tùy chỉnh giao diện & âm thanh</div></div>
+          <div>
+            <label class="small muted">Music</label>
+            <select id="musicToggle" class="select">
+              <option value="on" selected>Bật</option><option value="off">Tắt</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-top:10px">
+          <div class="row" style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <label class="small">Theme intensity</label>
+            <input type="range" id="themeIntensity" min="0" max="100" value="60" class="range" />
+          </div>
+          <div class="row" style="display:flex;gap:8px;align-items:center">
+            <label class="small">Leaderboards</label>
+            <div style="margin-left:auto"><button class="ghost" id="btnExport">Xuất CSV</button> <button class="ghost" id="btnResetLB">Xóa</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card leaderboard">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div><strong>Bảng xếp hạng</strong><div id="leaderboardStatus" class="muted small">Offline</div></div>
+        </div>
+        <div class="board-wrap" id="leaderboardWrap">
+          <table id="leaderboardTable">
+            <thead><tr><th>#</th><th>Tên</th><th>Score</th><th>Game</th><th>Ngày</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Game & Alert Modals -->
+<div id="overlay" class="overlay" style="display:none">
+  <div class="modal card">
+    <div class="modal-header">
+      <div style="font-weight:800" id="modalTitle">Game</div>
+      <div class="muted small" id="modalSubtitle">—</div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <button class="ghost" id="btnMute">Tắt nhạc</button>
+        <button class="ghost" id="btnExit">Thoát</button>
+      </div>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="footer">
+      <div class="muted small">Điểm sẽ được lưu khi kết thúc trò chơi</div>
+      <div>
+        <span class="muted small">Người chơi: </span><strong id="modalPlayer"></strong>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="customAlert" class="overlay" style="z-index: 100; display: none;">
+  <div class="modal card" style="max-width: 400px; text-align: center;">
+    <div id="customAlertMessage" style="margin-bottom: 20px; font-size: 1.1em; line-height: 1.5;"></div>
+    <div style="display: flex; justify-content: center; gap: 10px;">
+        <button class="btn" id="customAlertOk">OK</button>
+        <button class="ghost" id="customAlertCancel" style="display: none;">Hủy</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-app.js";
+  import { getFirestore, collection, query, onSnapshot, addDoc, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-firestore.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-auth.js";
+  
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyA6MzA5S1JxABA6PPsiH1dV_JjMpoqkxIM",
+    authDomain: "quan-ly-sinh-vien-e3307.firebaseapp.com",
+    projectId: "quan-ly-sinh-vien-e3307",
+    storageBucket: "quan-ly-sinh-vien-e3307.appspot.com",
+    messagingSenderId: "1021646737843",
+    appId: "1:1021646737843:web:7edb6d3be5257c4d10fbc6"
+  };
+
+  let db;
+  let auth;
+  let firebaseActive = false;
+
+  try {
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    auth = getAuth(app);
+    firebaseActive = true;
+  } catch (e) {
+    console.error("Firebase initialization failed:", e);
+  }
+
+
+  // --- Main JS - Enhanced Edition ---
+  (function() {
+    "use strict";
+    
+    // --- State and Constants ---
+    const LS_KEY = 'sg_hub_lb_v1_fallback';
+    let APP = {
+      playerName: null,
+      leaderboard: [],
+      currentGame: null,
+      settings: { music: true, theme: 'rainbow' }
+    };
+
+    // --- DOM References ---
+    const getEl = id => document.getElementById(id);
+    const playerInput = getEl('playerNameInput'), btnStart = getEl('btnStart'), btnClear = getEl('btnClear');
+    const playerDisplay = getEl('playerNameDisplay'), overlay = getEl('overlay'), modalBody = getEl('modalBody');
+    const modalTitle = getEl('modalTitle'), modalSubtitle = getEl('modalSubtitle'), modalPlayer = getEl('modalPlayer');
+    const btnExit = getEl('btnExit'), btnMute = getEl('btnMute'), lbTableBody = document.querySelector('#leaderboardTable tbody');
+    const btnExport = getEl('btnExport'), btnResetLB = getEl('btnResetLB'), themeSelect = getEl('themeSelect');
+    const musicToggle = getEl('musicToggle');
+    const customAlert = getEl('customAlert'), customAlertMessage = getEl('customAlertMessage');
+    let customAlertOk = getEl('customAlertOk'), customAlertCancel = getEl('customAlertCancel');
+    const leaderboardStatus = getEl('leaderboardStatus');
+    
+    // --- Core Functions ---
+    const Utils = {
+      nowISO: () => new Date().toISOString(),
+      shuffleArray: a => { const arr = a.slice(); for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; },
+    };
+
+    // --- UI/Modal Management ---
+    function showAlert(message, callback) {
+        customAlertMessage.innerHTML = message;
+        customAlertOk.style.display = 'inline-block';
+        customAlertCancel.style.display = 'none';
+        customAlert.style.display = 'flex';
+        setTimeout(() => customAlert.classList.add('visible'), 10);
+        
+        const newOkButton = customAlertOk.cloneNode(true);
+        customAlertOk.parentNode.replaceChild(newOkButton, customAlertOk);
+        customAlertOk = newOkButton; 
+
+        customAlertOk.onclick = () => {
+            customAlert.classList.remove('visible');
+            setTimeout(() => { customAlert.style.display = 'none'; if (callback) callback(); }, 300);
+        };
+    }
+
+    function showConfirm(message, onConfirm) {
+        customAlertMessage.textContent = message;
+        customAlertOk.textContent = 'Xác nhận';
+        customAlertCancel.textContent = 'Hủy';
+        customAlertOk.style.display = 'inline-block';
+        customAlertCancel.style.display = 'inline-block';
+        customAlert.style.display = 'flex';
+        setTimeout(() => customAlert.classList.add('visible'), 10);
+
+        const newOkButton = customAlertOk.cloneNode(true);
+        customAlertOk.parentNode.replaceChild(newOkButton, customAlertOk);
+        customAlertOk = newOkButton;
+        const newCancelButton = customAlertCancel.cloneNode(true);
+        customAlertCancel.parentNode.replaceChild(newCancelButton, customAlertCancel);
+        customAlertCancel = newCancelButton;
+
+        const close = (result) => {
+            customAlert.classList.remove('visible');
+            setTimeout(() => { customAlert.style.display = 'none'; if (onConfirm) onConfirm(result); }, 300);
+        };
+        customAlertOk.onclick = () => close(true);
+        customAlertCancel.onclick = () => close(false);
+    }
+
+    function refreshLeaderboardUI() {
+        if (firebaseActive) {
+            leaderboardStatus.textContent = 'Online';
+            const q = query(collection(db, "leaderboard"), orderBy("score", "desc"), limit(50));
+            onSnapshot(q, (querySnapshot) => {
+                const scores = [];
+                querySnapshot.forEach((doc) => {
+                    scores.push(doc.data());
+                });
+                renderLeaderboard(scores);
+            }, (error) => {
+                console.error("Firebase snapshot error:", error);
+                firebaseActive = false; // Fallback on permission error
+                refreshLeaderboardUI();
+            });
+        } else {
+            leaderboardStatus.textContent = 'Offline';
+            const scores = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+            renderLeaderboard(scores);
+        }
+    }
+
+    function renderLeaderboard(scores) {
+        lbTableBody.innerHTML = '';
+        scores.sort((a,b) => b.score - a.score).slice(0, 50).forEach((e, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${i+1}</td><td>${escapeHtml(e.name)}</td><td>${e.score}</td><td>${gameTitle(e.gameId)}</td><td>${new Date(e.date).toLocaleDateString()}</td>`;
+            lbTableBody.appendChild(tr);
+        });
+    }
+
+    function escapeHtml(s){ return (s+'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    
+    function applyTheme(){
+      const t = APP.settings.theme;
+      const themes = {
+        rainbow: ['#ff6ec7', '#7df9ff', '#ffd36e'],
+        neon: ['#7df9ff', '#a1ffba', '#ff7bd6'],
+        dark: ['#556bff', '#9b8cff', '#00d4ff'],
+        light: ['#ffa726', '#ffcc80', '#90caf9']
+      };
+      const [c1, c2, c3] = themes[t] || themes.rainbow;
+      document.documentElement.style.setProperty('--accent1', c1);
+      document.documentElement.style.setProperty('--accent2', c2);
+      document.documentElement.style.setProperty('--accent3', c3);
+    }
+
+    function openGame(gameId){
+      if(!APP.playerName){ showAlert('Vui lòng nhập tên trước khi chơi.'); playerInput.focus(); return; }
+      APP.currentGame = gameId;
+      modalTitle.textContent = gameTitle(gameId);
+      modalSubtitle.textContent = gameSubtitle(gameId);
+      modalPlayer.textContent = APP.playerName;
+      overlay.style.display = 'flex';
+      setTimeout(() => overlay.classList.add('visible'), 10);
+      modalBody.innerHTML = ''; // clear
+      
+      const initializers = {
+          quiz: initQuiz, memory: initMemory, clickspeed: initClickSpeed, 
+          snake: initSnake, flappy: initFlappy, '2048': init2048,
+          tictactoe: initTicTacToe
+      };
+      if(initializers[gameId]) initializers[gameId](modalBody);
+    }
+
+    function closeGame(){
+      if(window.GAME && typeof window.GAME.destroy === 'function') try{ window.GAME.destroy(); }catch(e){}
+      window.GAME = null;
+      overlay.classList.remove('visible');
+      setTimeout(() => { overlay.style.display = 'none'; modalBody.innerHTML = ''; }, 300);
+      APP.currentGame = null;
+    }
+
+    function gameTitle(id){
+      return ({quiz:'Quiz Nhanh', memory:'Memory - Ghép đôi', clickspeed:'Click Speed', snake:'Snake', flappy:'Flappy mini', '2048':'2048', tictactoe: 'Tic-Tac-Toe'}[id]||id);
+    }
+    function gameSubtitle(id){
+      return ({quiz:'Trả lời nhanh — có timer', memory:'Tìm cặp — ít lượt = nhiều điểm', clickspeed:'Nhấp nhiều nhất trong thời gian', snake:'Rắn săn mồi', flappy:'Nhấn để bay', '2048':'Gộp số để đạt 2048', tictactoe: 'Cờ caro 3x3 với máy'}[id]||'');
+    }
+
+    async function pushScore(name, score, gameId){
+      if (score <= 0) return;
+      const entry = { name: name, score: Math.round(score), gameId: gameId, date: Utils.nowISO() };
+      
+      if(firebaseActive) {
+          try {
+            await addDoc(collection(db, "leaderboard"), entry);
+          } catch (e) {
+            console.error("Error adding document to Firebase: ", e);
+            // Fallback to local on error
+            saveToLocal(entry);
+          }
+      } else {
+        saveToLocal(entry);
+      }
+    }
+    
+    function saveToLocal(entry) {
+        let localScores = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+        localScores.push(entry);
+        localStorage.setItem(LS_KEY, JSON.stringify(localScores));
+        refreshLeaderboardUI();
+    }
+
+    // --- Event Listeners Setup ---
+    function setupEventListeners() {
+        btnStart.addEventListener('click', ()=>{
+          const v = (playerInput.value||'').trim();
+          if(!v){ showAlert('Vui lòng nhập tên trước khi chơi.'); playerInput.focus(); return; }
+          APP.playerName = v;
+          playerDisplay.textContent = v;
+          modalPlayer.textContent = v;
+          localStorage.setItem('sg_hub_player_name', v);
+          showAlert('Tên đã lưu: ' + v);
+        });
+        btnClear.addEventListener('click', ()=>{ playerInput.value = ''; localStorage.removeItem('sg_hub_player_name'); APP.playerName = null; playerDisplay.textContent = '— chưa đăng nhập —'; });
+
+        themeSelect.addEventListener('change', (e)=>{ APP.settings.theme = e.target.value; applyTheme(); });
+        musicToggle.addEventListener('change', (e)=>{ APP.settings.music = e.target.value !== 'off'; });
+        btnMute.addEventListener('click', ()=>{ APP.settings.music = !APP.settings.music; btnMute.textContent = APP.settings.music ? 'Tắt nhạc' : 'Bật nhạc'; });
+
+        btnExport.addEventListener('click', ()=> showAlert('Chức năng này không được hỗ trợ khi dùng leaderboard online.'));
+        btnResetLB.addEventListener('click', ()=> showConfirm('Bạn có muốn xóa bảng xếp hạng offline không?', (ok) => {
+            if(ok) { localStorage.setItem(LS_KEY, '[]'); refreshLeaderboardUI(); }
+        }));
+
+        btnExit.addEventListener('click', closeGame);
+        window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeGame(); });
+
+        document.querySelectorAll('.play-btn').forEach(button => {
+          button.addEventListener('click', (e) => {
+              const gameId = e.currentTarget.dataset.game;
+              if(gameId) openGame(gameId);
+          });
+        });
+        
+        document.querySelectorAll('.card').forEach(card => {
+          card.onmousemove = e => {
+              const rect = card.getBoundingClientRect();
+              card.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
+              card.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
+          };
+        });
+    }
+    
+    // --- Game Implementations ---
+    function initQuiz(container){
+        const difficulty = getEl('quizDifficulty').value;
+        const timePerQuestion = difficulty==='easy'?18: (difficulty==='normal'?12:8);
+        const questions = [
+            {q:'Thủ đô của Việt Nam là?', a:'Hà Nội', opts:['Hà Nội','Hồ Chí Minh','Đà Nẵng','Hải Phòng']},
+            {q:'2 + 3 = ?', a:'5', opts:['4','5','6','3']},
+        ];
+        const qs = Utils.shuffleArray(questions).slice(0,5);
+        let idx=0, score=0, timeLeft=timePerQuestion;
+        const root = document.createElement('div');
+        root.innerHTML = `<div style="width:100%"><div id="qWrap" style="margin-top:8px;"></div><div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center"><div class="muted">Time left: <span id="qTime">${timeLeft}</span>s</div><div>Score: <span id="qScore">${score}</span></div></div></div>`;
+        container.appendChild(root);
+        function renderQuestion(){
+          const qWrap = root.querySelector('#qWrap'); qWrap.innerHTML = '';
+          if(idx>=qs.length){ finishQuiz(); return; }
+          const item = qs[idx];
+          const qDiv = document.createElement('div');
+          qDiv.innerHTML = `<div style="font-weight:700;margin-bottom:6px">Q${idx+1}. ${item.q}</div>`;
+          item.opts.forEach(opt=>{
+            const b=document.createElement('button'); b.className='btn'; b.style.padding='8px 10px'; b.style.marginRight='8px'; b.style.marginBottom='6px';
+            b.textContent=opt; b.onclick=()=>{ if(opt===item.a) score += 150 + timeLeft*5; idx++; timeLeft = timePerQuestion; root.querySelector('#qScore').textContent = score; renderQuestion(); };
+            qDiv.appendChild(b);
+          });
+          qWrap.appendChild(qDiv);
+        }
+        renderQuestion();
+        let timer = setInterval(()=>{ timeLeft--; const el=root.querySelector('#qTime'); if(el) el.textContent=timeLeft; if(timeLeft<=0){ idx++; timeLeft=timePerQuestion; if(idx>=qs.length) finishQuiz(); else renderQuestion(); } }, 1000);
+        window.GAME = { destroy(){ clearInterval(timer); } };
+        function finishQuiz(){
+          clearInterval(timer);
+          showAlert('Quiz kết thúc. Điểm: ' + score, () => { pushScore(APP.playerName, score, 'quiz'); closeGame(); });
+        }
+    }
+
+    function initMemory(container){
+        const difficulty = getEl('memoryDifficulty').value;
+        const pairs = difficulty==='easy'?6: (difficulty==='normal'?8:10);
+        const fruits = ['🍎', '🍌', '🍇', '🍓', '🍒', '🍑', '🍍', '🥝', '🍉', '🥭', '🥥', '🥑'].slice(0, pairs);
+        const cards = Utils.shuffleArray([...fruits, ...fruits]);
+        let flipped = [], matched = new Set(), moves=0, lockBoard = false;
+        const grid = document.createElement('div'); 
+        grid.className = 'memory-grid';
+        grid.style.gridTemplateColumns = `repeat(${pairs === 6 ? 4 : (pairs === 8 ? 4 : 5)}, 1fr)`;
+        container.appendChild(grid);
+        
+        cards.forEach((s,i)=>{
+          const c=document.createElement('div'); 
+          c.className = 'memory-card';
+          c.textContent=s; 
+          c.dataset.index=i; 
+          c.onclick=()=>flip(i);
+          grid.appendChild(c);
+        });
+        
+        const info = document.createElement('div'); info.className='muted small'; info.style.width='100%'; info.style.textAlign='center'; info.style.marginTop='10px'; info.textContent='Moves: 0'; container.appendChild(info);
+        
+        function flip(i){
+          if(lockBoard || flipped.includes(i) || matched.has(i)) return;
+          const cardEl = grid.children[i];
+          flipped.push(i);
+          cardEl.classList.add('flipped');
+
+          if(flipped.length===2){
+            moves++; info.textContent='Moves: '+moves; lockBoard = true;
+            const [idx1, idx2] = flipped;
+            if(cards[idx1]===cards[idx2]){ 
+              matched.add(idx1); matched.add(idx2); 
+              grid.children[idx1].classList.add('matched');
+              grid.children[idx2].classList.add('matched');
+              flipped=[]; lockBoard=false; 
+              if(matched.size===cards.length) finishMem(); 
+            } else { 
+              setTimeout(()=>{ 
+                grid.children[idx1].classList.remove('flipped');
+                grid.children[idx2].classList.remove('flipped');
+                flipped=[]; lockBoard=false;
+              }, 800); 
+            }
+          }
+        }
+        
+        function finishMem(){ 
+          const score = Math.max(0, 5000 - moves*50); 
+          showAlert('Hoàn thành! Điểm: '+score, () => {pushScore(APP.playerName, score, 'memory'); closeGame();}); 
+        }
+        window.GAME = { destroy(){} };
+    }
+
+   function initClickSpeed(container){
+    const duration = parseInt(getEl('clickDuration').value,10) || 10;
+    let running=false, timeLeft=duration, count=0, timer=null;
+    const root=document.createElement('div'); root.innerHTML = `<div style="display:flex;gap:12px;align-items:center"><div><strong>Time:</strong> <span id="csTime">${timeLeft}</span>s</div><div><strong>Clicks:</strong> <span id="csCount">${count}</span></div></div><div style="margin-top:10px"><button class="btn" id="csStart">Bắt đầu</button> <button class="ghost" id="csReset">Reset</button></div><div style="margin-top:14px"><button class="btn" id="csTap" style="font-size:20px;padding:28px 40px">NHẤP!</button></div>`;
+    container.appendChild(root);
+    const elTime = root.querySelector('#csTime'), elCount = root.querySelector('#csCount');
+    root.querySelector('#csStart').onclick = ()=>{
+      if(running) return;
+      running=true; count=0; timeLeft=duration; elTime.textContent=timeLeft; elCount.textContent=count;
+      timer = setInterval(()=>{ timeLeft--; elTime.textContent=timeLeft; if(timeLeft<=0){ clearInterval(timer); running=false; const score = count; showAlert('Hết giờ! Clicks: '+count, () => {pushScore(APP.playerName, score, 'clickspeed'); closeGame();}); } },1000);
+    };
+    root.querySelector('#csTap').onclick = ()=>{ if(!running) return; count++; elCount.textContent=count; };
+    root.querySelector('#csReset').onclick = ()=>{ clearInterval(timer); running=false; timeLeft=duration; count=0; elTime.textContent=timeLeft; elCount.textContent=count; };
+    window.GAME = { destroy(){ if(timer) clearInterval(timer); } };
+  }
+    /* 4) Snake (canvas) */
+  function initSnake(container){
+    const difficulty = getEl('snakeDifficulty').value;
+    const speed = difficulty==='easy'?160: (difficulty==='normal'?110:70);
+    const cw = 20, cols = 20, rows = 15;
+    let canvas = document.createElement('canvas'); canvas.width = cols*cw; canvas.height = rows*cw; canvas.className='game-canvas'; container.appendChild(canvas);
+    let ctx = canvas.getContext('2d');
+    let snake = [{x:3,y:7},{x:2,y:7},{x:1,y:7}], dir='right', food=randomFood(), score=0;
+    let tick=null; draw();
+    function randomFood(){ let p; do{ p={x:Math.floor(Math.random()*cols), y:Math.floor(Math.random()*rows)} } while(snake.some(s=>s.x===p.x && s.y===p.y)); return p; }
+    function draw(){ ctx.fillStyle='#061022'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle='#ff4d6d'; ctx.fillRect(food.x*cw+2, food.y*cw+2, cw-4, cw-4); snake.forEach((s,i)=>{ ctx.fillStyle = i===0 ? '#ffd36e' : '#7df9ff'; ctx.fillRect(s.x*cw+1, s.y*cw+1, cw-2, cw-2); }); ctx.fillStyle='#fff'; ctx.font='14px Inter'; ctx.fillText('Score: '+score, 8, 16); }
+    function step(){
+      const head = {...snake[0]};
+      if(dir==='right') head.x++; if(dir==='left') head.x--; if(dir==='up') head.y--; if(dir==='down') head.y++;
+      if(head.x<0||head.y<0||head.x>=cols||head.y>=rows||snake.some(s=>s.x===head.x && s.y===head.y)){
+        clearInterval(tick); showAlert('Game Over! Score: '+score, () => {pushScore(APP.playerName, score, 'snake'); closeGame();}); return;
+      }
+      snake.unshift(head);
+      if(head.x===food.x && head.y===food.y){ score+=10; food=randomFood(); }
+      else snake.pop();
+      draw();
+    }
+    const onKey = (e) => {
+        if(e.key==='ArrowUp' && dir!=='down') dir='up';
+        if(e.key==='ArrowDown' && dir!=='up') dir='down';
+        if(e.key==='ArrowLeft' && dir!=='right') dir='left';
+        if(e.key==='ArrowRight' && dir!=='left') dir='right';
+    };
+    document.addEventListener('keydown', onKey);
+    tick = setInterval(step, speed);
+    window.GAME = { destroy(){ clearInterval(tick); document.removeEventListener('keydown', onKey); } };
+  }
+
+    /* 5) Flappy mini */
+  function initFlappy(container){
+    const diff = getEl('flappyDifficulty').value;
+    const gravity = diff==='easy'?0.45: (diff==='normal'?0.6:0.8);
+    const canvas = document.createElement('canvas'); canvas.width=420; canvas.height=420; canvas.className='game-canvas'; container.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    let y = 180, vy=0, pipes=[], score=0;
+    let tick = setInterval(loop, 30);
+    function loop(){
+      vy += gravity; y += vy;
+      if(Math.random()<0.03) pipes.push({x:420, top: 60 + Math.random()*180, gap: 100});
+      pipes.forEach(p=> p.x -= 3); pipes = pipes.filter(p => p.x > -80);
+      const birdRect = {x:50, y, w:30, h:22};
+      for(let p of pipes){
+        if(birdRect.x < p.x + 60 && birdRect.x + birdRect.w > p.x && (birdRect.y < p.top || birdRect.y + birdRect.h > p.top + p.gap)) { gameOver(); return; }
+        if(!p.scored && p.x + 60 < 50){ score++; p.scored=true; }
+      }
+      if(y > canvas.height - 22 || y < 0) { gameOver(); return; }
+      draw();
+    }
+    function draw(){
+      ctx.fillStyle='#72c3ff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      pipes.forEach(p=>{ ctx.fillStyle='#0b3'; ctx.fillRect(p.x,0,60,p.top); ctx.fillRect(p.x,p.top + p.gap,60,canvas.height - (p.top + p.gap)); });
+      ctx.fillStyle='#ffea7f'; ctx.fillRect(50, y, 30, 22);
+      ctx.fillStyle='#000'; ctx.fillText('Score: '+score, 10, 20);
+    }
+    function flap(){ vy = -8; }
+    function gameOver() { clearInterval(tick); showAlert('Game Over! Score: '+score, () => { pushScore(APP.playerName, score, 'flappy'); closeGame(); }); }
+    const keyHandler = (e)=>{ if(e.key===' ') flap(); };
+    document.addEventListener('keydown', keyHandler);
+    container.addEventListener('click', () => flap());
+    window.GAME = { destroy(){ clearInterval(tick); document.removeEventListener('keydown', keyHandler); } };
+  }
+
+    /* 6) 2048 */
+  function init2048(container){
+    let grid = newGrid(), score=0;
+    container.innerHTML = '<div><strong>2048</strong><div class="muted small">Use arrow keys to move</div></div>';
+    const board = document.createElement('div'); 
+    board.className = 'board2048';
+    container.appendChild(board);
+    const scoreEl = document.createElement('div'); scoreEl.className='muted small'; scoreEl.textContent='Score: 0'; container.appendChild(scoreEl);
+    renderGrid();
+    function newGrid(){ const g=Array.from({length:4},()=>Array(4).fill(0)); randomTile(g); randomTile(g); return g; }
+    function randomTile(g){
+      const empt=[]; for(let r=0;r<4;r++) for(let c=0;c<4;c++) if(!g[r][c]) empt.push([r,c]);
+      if(empt.length===0) return; const [r,c] = empt[Math.floor(Math.random()*empt.length)]; g[r][c] = Math.random()<0.9?2:4;
+    }
+    function renderGrid(){
+      board.innerHTML=''; grid.flat().forEach(v=>{ const el=document.createElement('div'); el.className = 'tile2048'; el.textContent = v||''; el.style.backgroundColor = `rgba(255,255,255,${Math.log2(v||1)*0.05})`; board.appendChild(el); });
+      scoreEl.textContent = 'Score: '+score;
+    }
+    function move(dir){
+      const old = JSON.stringify(grid);
+      let g=grid.map(r=>r.slice()), gained=0;
+      for(let i=0;i<dirSteps(dir);i++) g=rotate(g);
+      for(let r=0;r<4;r++){
+        let row = g[r].filter(v=>v); for(let i=0;i<row.length-1;i++) if(row[i]===row[i+1]){ row[i]*=2; gained += row[i]; row.splice(i+1,1); }
+        while(row.length<4) row.push(0); g[r]=row;
+      }
+      for(let i=0;i<(4-dirSteps(dir)) % 4;i++) g=rotate(g);
+      if(JSON.stringify(g)!==old){ randomTile(g); grid=g; score+=gained; renderGrid(); if(checkWin(grid)){ showAlert('Bạn thắng! Score: '+score, () => {pushScore(APP.playerName, score, '2048'); closeGame();}); } }
+    }
+    function dirSteps(dir){ if(dir==='left') return 0; if(dir==='up') return 1; if(dir==='right') return 2; if(dir==='down') return 3; }
+    function rotate(m){ const n=Array.from({length:4},()=>Array(4).fill(0)); for(let r=0;r<4;r++) for(let c=0;c<4;c++) n[r][c]=m[3-c][r]; return n; }
+    function checkWin(g){ return g.some(r=>r.some(c=>c>=2048)); }
+    const onKey = e => { if(e.key.includes('Arrow')) move(e.key.replace('Arrow','').toLowerCase()); };
+    document.addEventListener('keydown', onKey);
+    window.GAME = { destroy(){ document.removeEventListener('keydown', onKey); } };
+  }
+    /* 7) Tic-Tac-Toe */
+  function initTicTacToe(container) {
+    let board = Array(9).fill(null);
+    let currentPlayer = 'X';
+    let gameOver = false;
+    
+    const boardEl = document.createElement('div');
+    boardEl.className = 'tictactoe-board';
+    container.appendChild(boardEl);
+
+    function checkWinner() {
+        const lines = [ [0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6] ];
+        for (let line of lines) {
+            const [a, b, c] = line;
+            if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
+        }
+        return board.includes(null) ? null : 'Tie';
+    }
+
+    function aiMove() {
+        if (gameOver) return;
+        let emptyCells = board.map((v, i) => v === null ? i : null).filter(v => v !== null);
+        if (emptyCells.length === 0) return;
+        
+        let move = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+        board[move] = 'O';
+        currentPlayer = 'X';
+        render();
+        checkEndState();
+    }
+
+    function handleClick(index) {
+        if (gameOver || board[index] || currentPlayer !== 'X') return;
+        board[index] = 'X';
+        currentPlayer = 'O';
+        render();
+        if(!checkEndState()) setTimeout(aiMove, 500);
+    }
+
+    function checkEndState() {
+        const winner = checkWinner();
+        if (winner) {
+            gameOver = true;
+            const message = winner === 'Tie' ? 'Hòa!' : `"${winner}" thắng!`;
+            showAlert(message, () => {
+                pushScore(APP.playerName, winner === 'X' ? 100 : (winner === 'Tie' ? 10 : 0), 'tictactoe');
+                closeGame();
+            });
+            return true;
+        }
+        return false;
+    }
+
+    function render() {
+        boardEl.innerHTML = '';
+        board.forEach((cell, index) => {
+            const cellEl = document.createElement('div');
+            cellEl.className = 'ttt-cell';
+            cellEl.textContent = cell;
+            cellEl.style.color = cell === 'X' ? 'var(--accent1)' : 'var(--accent2)';
+            cellEl.onclick = () => handleClick(index);
+            boardEl.appendChild(cellEl);
+        });
+    }
+
+    render();
+    window.GAME = { destroy: () => {} };
+  }
+
+
+    // --- Initial Load ---
+    async function init(){
+      if (firebaseActive) {
+          try {
+            await signInAnonymously(auth);
+            console.log("Signed in anonymously");
+          } catch(e) {
+            console.error("Anonymous sign in failed. This is likely a Firebase configuration issue. Anonymous sign-in is not enabled in the Firebase console. Falling back to localStorage.", e);
+            firebaseActive = false; // Disable firebase features on auth fail
+          }
+      }
+      
+      const p = localStorage.getItem('sg_hub_player_name'); 
+      if(p){ 
+        playerInput.value = p; 
+        APP.playerName = p; 
+        playerDisplay.textContent = p; 
+        modalPlayer.textContent = p; 
+      }
+      applyTheme();
+      refreshLeaderboardUI(); 
+      setupEventListeners();
+    }
+    
+    init();
+
+  })();
+</script>
+</body>
+</html>
+
