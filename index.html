@@ -1098,6 +1098,40 @@
             appendMessage(response, 'bot');
         }
 
+        async function getGeminiResponse(query) {
+    // Điểm cuối API giờ là endpoint do Vercel tự động tạo ra từ file api/chat.js
+    const API_ENDPOINT = '/api/chat'; 
+
+    const currentYear = new Date().getFullYear();
+    const contextualQuery = `Năm hiện tại là ${currentYear}. Vui lòng trả lời câu hỏi sau: ${query}`;
+
+    try {
+        const response = await fetch(API_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // Gửi câu hỏi của người dùng trong body để backend có thể nhận được
+            body: JSON.stringify({ query: contextualQuery }) 
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Lỗi từ server: ${errorData.error}`);
+        }
+        
+        const data = await response.json();
+
+        // Lấy nội dung text từ dữ liệu mà backend trả về
+        if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
+            return data.candidates[0].content.parts[0].text;
+        } else {
+            return "Xin lỗi, tôi không thể tạo câu trả lời cho yêu cầu này.";
+        }
+    } catch (error) {
+        console.error("Lỗi khi gọi API qua serverless function:", error);
+        return "Đã xảy ra lỗi kết nối đến chatbot. Vui lòng thử lại sau.";
+    }
+}
+
          document.addEventListener('DOMContentLoaded', () => {
             loadTheme();
             loadAccentColor();
