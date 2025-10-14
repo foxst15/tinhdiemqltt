@@ -230,7 +230,7 @@
 </head>
 
 <body class="flex">
-    <!-- Giao diện HTML không thay đổi -->
+    
     <aside id="sidebar" class="sidebar fixed top-0 left-0 h-full w-64 bg-card-bg shadow-lg transform -translate-x-full md:translate-x-0 transition-transform duration-300 z-50">
         <div>
             <div class="p-4 flex items-center justify-between border-b border-main">
@@ -268,7 +268,7 @@
 
             </nav>
         </div>
-        <!-- PHẦN DÀNH CHO ĐĂNG NHẬP -->
+        
         <div class="p-4 mt-auto border-t border-main">
             <div id="auth-container" class="text-center">
                  <button id="login-btn" class="w-full btn-secondary bg-red-500 hover:bg-red-600 flex items-center justify-center">
@@ -276,7 +276,7 @@
                     <span>Đăng nhập với Google</span>
                 </button>
             </div>
-            <!-- user-info có class hidden nhưng phải có sẵn class items-center -->
+            
             <div id="user-info" class="hidden items-center">
                 <img id="user-avatar" class="w-10 h-10 rounded-full mr-3" src="" alt="User Avatar">
                 <div class="text-sm">
@@ -317,7 +317,7 @@
         <div id="chatbot-button" class="p-3 rounded-full bg-sky-500/80 shadow-lg cursor-pointer hover:bg-sky-500 transition-all">
             <img src="https://www.shutterstock.com/image-vector/chat-bot-icon-virtual-smart-600nw-2478937553.jpg" alt="Chatbot Icon" class="h-8 w-8 rounded-full">
         </div>
-        <!-- NÚT IN CẦN KIỂM TRA ĐĂNG NHẬP -->
+       
         <button id="openPrintModalBtn" class="btn-secondary bg-sky-500/80  rounded-full p-3 shadow-lg print-button">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -434,13 +434,13 @@
 
     <div id="printContent" style="display: none;"></div>
 
-    <!-- THÊM THƯ VIỆN FIREBASE AUTH -->
+    
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 
     <script>
-        // KHỞI TẠO FIREBASE
+        
         const firebaseConfig = {
             apiKey: "AIzaSyA6MzA5S1JxABA6PPsiH1dV_JjMpoqkxIM",
             authDomain: "quan-ly-sinh-vien-e3307.firebaseapp.com",
@@ -456,18 +456,18 @@
 
         firebase.auth().useDeviceLanguage();
 
-        // ======= Config & State =======
+        
         const THEME_KEY = 'student-app:theme';
         const BG_KEY = 'student-app:background';
         const ACCENT_KEY = 'student-app:accent';
         const FONT_COLOR_KEY = 'student-app:font-color';
         const CARD_BG_KEY = 'student-app:card-bg';
-        // Đã xóa CUSTOM_AVATAR_KEY
+      
 
         let students = [];
         let isLoggedIn = false;
 
-        // ======= Các hàm giao diện và tính toán (giữ nguyên) =======
+       
         function applyTheme(theme) {
             const body = document.body;
             if (theme === 'light') { body.classList.add('light-mode'); }
@@ -622,7 +622,7 @@
             
         };
 
-        // ======= Các hàm CRUD với FIREBASE =======
+       
 
         function setupRealtimeListener() {
             studentsCollection.onSnapshot(snapshot => {
@@ -691,13 +691,12 @@
             }
         }
 
-        // ======= Các hàm xác thực người dùng =======
-
+        
         function signInWithGoogle() {
             const provider = new firebase.auth.GoogleAuthProvider();
             provider.addScope('email');
 
-            // Dùng signInWithPopup thay vì signInWithRedirect
+            
             auth.signInWithPopup(provider)
                 .then((result) => {
                     console.log("Đăng nhập bằng Pop-up thành công!", result.user.displayName);
@@ -714,50 +713,50 @@
 
         function signOut() {
             auth.signOut().then(() => {
-                // Đã xóa: localStorage.removeItem(CUSTOM_AVATAR_KEY);
+                
             }).catch(error => console.error("Đăng xuất thất bại:", error));
         }
         
-        // HÀM XỬ LÝ TRẠNG THÁI XÁC THỰC (ĐÃ ĐƠN GIẢN HÓA)
+        
         function handleAuthStateChange(user) {
             const authContainer = document.getElementById('auth-container');
             const userInfo = document.getElementById('user-info');
-            const userAvatar = document.getElementById('user-avatar'); // Lấy element avatar
+            const userAvatar = document.getElementById('user-avatar'); 
 
-            isLoggedIn = !!user; // Cập nhật trạng thái đăng nhập
+            isLoggedIn = !!user; 
 
             if (user) {
-                // User is signed in
+              
                 authContainer.classList.add('hidden');
                 
-                // Đảm bảo user-info được hiển thị là FLEX
+               
                 userInfo.classList.remove('hidden');
                 userInfo.style.display = 'flex'; 
 
-                // Đặt URL Ảnh từ Google
+                
                 userAvatar.src = user.photoURL;
                 
-                // 2. Thiết lập ảnh dự phòng nếu ảnh gốc lỗi (onerror)
+               
                 userAvatar.onerror = function() {
                     userAvatar.src = 'https://img.icons8.com/material-rounded/48/user--v1.png'; 
-                    userAvatar.onerror = null; // Ngăn chặn loop vô hạn
+                    userAvatar.onerror = null; 
                 };
 
                 document.getElementById('user-name').textContent = user.displayName || 'Người dùng';
             } else {
-                // User is signed out
+                
                 authContainer.classList.remove('hidden');
                 userInfo.classList.add('hidden');
-                userInfo.style.display = 'none'; // ĐẢM BẢO ẨN
-                // Reset ảnh dự phòng khi đăng xuất
+                userInfo.style.display = 'none'; 
+              
                 userAvatar.src = '';
                 userAvatar.onerror = null;
             }
 
-            // QUAN TRỌNG: Cập nhật lại giao diện (danh sách sinh viên và form thêm mới)
+           
             const currentTab = document.querySelector('.sidebar-link.active')?.dataset.tab;
             if (currentTab === 'student-list') {
-                renderStudents(); // RENDER LẠI ĐỂ CẬP NHẬT NÚT SỬA/XÓA
+                renderStudents(); 
             }
             if (currentTab === 'add-student') {
                 const addStudentBtn = document.getElementById('btnAddNewStudent');
@@ -768,7 +767,7 @@
         }
 
 
-        // ======= Các hàm logic và render khác (Không thay đổi) =======
+        
 
         function switchTab(tabName) {
             document.querySelectorAll('.sidebar-link').forEach(link => link.classList.remove('active'));
@@ -788,11 +787,11 @@
                     );
                     renderStudents(filteredStudents);
                 });
-                renderStudents(); // Hiển thị sinh viên sau khi chuyển tab
+                renderStudents(); 
             } else if (tabName === 'add-student') {
                 document.getElementById('studentForm').addEventListener('submit', addNewStudent);
                 const addStudentBtn = document.getElementById('btnAddNewStudent');
-                // Cập nhật trạng thái nút Thêm Sinh Viên khi chuyển tab
+             
                 if (addStudentBtn) {
                     isLoggedIn ? addStudentBtn.classList.remove('disabled') : addStudentBtn.classList.add('disabled');
                 }
@@ -800,17 +799,16 @@
         }
 
         function attachEventListeners() {
-            // Tối ưu hóa: Loại bỏ các listener cũ trước khi thêm mới
+           
             const studentsContainer = document.getElementById('studentsContainer');
             if(studentsContainer) {
                 const clone = studentsContainer.cloneNode(true);
                 studentsContainer.parentNode.replaceChild(clone, studentsContainer);
-                // Gán lại studentsContainer bằng clone mới
-                // studentsContainer = clone; // Không thể gán lại const, nhưng không cần thiết trong trường hợp này.
+                
             }
 
 
-            // Gắn lại các listeners cho các nút điều khiển mới được render
+           
             document.querySelectorAll('[data-edit-student]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     if (!isLoggedIn) { alert("Vui lòng đăng nhập để sửa."); return; }
@@ -974,7 +972,7 @@
                 const status = gpa >= 2.0 ? 'Đậu' : 'Trượt';
                 const statusColor = gpa >= 2.0 ? 'text-emerald-400' : 'text-red-400';
 
-                // QUAN TRỌNG: Ẩn/hiện các nút SỬA/XÓA và form THÊM MÔN HỌC dựa trên trạng thái đăng nhập (isLoggedIn)
+               
                 const controlsVisibilityClass = isLoggedIn ? '' : 'hidden';
 
                 const cardHtml = `
@@ -1099,7 +1097,7 @@
         }
 
         async function getGeminiResponse(query) {
-    // Điểm cuối API giờ là endpoint do Vercel tự động tạo ra từ file api/chat.js
+    
     const API_ENDPOINT = '/api/chat'; 
 
     const currentYear = new Date().getFullYear();
@@ -1109,7 +1107,7 @@
         const response = await fetch(API_ENDPOINT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            // Gửi câu hỏi của người dùng trong body để backend có thể nhận được
+          
             body: JSON.stringify({ query: contextualQuery }) 
         });
 
@@ -1120,7 +1118,7 @@
         
         const data = await response.json();
 
-        // Lấy nội dung text từ dữ liệu mà backend trả về
+     
         if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
             return data.candidates[0].content.parts[0].text;
         } else {
@@ -1162,7 +1160,7 @@
                             document.getElementById('sidebar-backdrop').classList.remove('active');
                         }
                     }
-                    // Nếu không có 'data-tab', link sẽ hoạt động như link bình thường (mở game.html)
+                   
                 });
             });
 
@@ -1215,4 +1213,5 @@
     <script src="/_vercel/speed-insights/script.js"></script>
 </body>
 </html>
+
 
