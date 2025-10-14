@@ -13,9 +13,8 @@
   - ADDED: Battleship (Hải Chiến) now supports both AI (Single Player) and PvP.
   - UPGRADED: Tic-Tac-Toe supports MULTIPLE GRID SIZES (3x3, 6x6, 8x8, 10x10).
   - MODIFIED: Quiz now shows 6 shuffled questions.
-  - FIX (CRITICAL): PvP auto-matching logic and various game UI rendering issues.
-  - FIX (CRITICAL): ReferenceError: currentPlayer is not defined in Battleship AI mode.
-  - FIX (CRITICAL): Removed lobby deletion on exit to prevent Firebase permission errors.
+  - FIX (CRITICAL): PvP auto-matching logic is now more robust, preventing players from getting stuck in their own lobbies.
+  - FIX: Game logic and UI rendering issues across various games.
 -->
 <style>
   @keyframes background-pan {
@@ -1498,56 +1497,68 @@
         async function setupPvp() {
             infoEl.textContent = 'Đang tìm phòng chơi...';
             const gameCollection = collection(db, "tictactoe_lobbies");
-            
-            // --- Logic Tự động Ghép phòng ---
-            // Thêm lọc theo kích thước bàn cờ
-            const q = query(gameCollection, where("player2Id", "==", null), where("size", "==", size), limit(1));
-            const availableLobbies = await getDocs(q);
-            
             let lobbyId;
+
+            // --- Logic Tự động Ghép phòng (NÂNG CẤP) ---
+
+            // 1. Tìm phòng của người khác đang chờ
+            const opponentLobbyQuery = query(gameCollection, 
+                where("player2Id", "==", null), 
+                where("size", "==", size),
+                where("player1Id", "!=", auth.currentUser.uid),
+                limit(1)
+            );
+            const availableLobbies = await getDocs(opponentLobbyQuery);
             
             if (!availableLobbies.empty) {
-                // TÌM THẤY phòng đang chờ
+                // TÌM THẤY & THAM GIA phòng của người khác
                 const lobbyDoc = availableLobbies.docs[0];
                 lobbyId = lobbyDoc.id;
-                
-                if (lobbyDoc.data().player1Id === auth.currentUser.uid) {
-                    // Nếu chính mình tạo phòng này, chờ người khác vào
-                    pvpGameRef = doc(gameCollection, lobbyId);
-                    infoEl.innerHTML = `Đã tạo phòng. ${size}x${size}. Bạn là X. Đang chờ đối thủ...`;
-                } else {
-                    // Tham gia phòng
-                    pvpGameRef = doc(gameCollection, lobbyId);
-                    
-                    APP.player1Id = lobbyDoc.data().player1Id; 
-                    APP.player2Id = auth.currentUser.uid;
-                    
-                    await updateDoc(pvpGameRef, { player2Id: APP.player2Id, player2Name: APP.playerName });
-                    infoEl.textContent = `Tham gia thành công. ${size}x${size}. Bạn là O.`;
-                }
-                
-            } else {
-                // KHÔNG TÌM THẤY, TẠO phòng mới
-                lobbyId = Utils.generateGameId();
                 pvpGameRef = doc(gameCollection, lobbyId);
                 
-                APP.player1Id = auth.currentUser.uid;
-                APP.player2Id = null;
-
-                const initialBoard = Array(boardSize).fill(null);
-                await setDoc(pvpGameRef, {
-                    gameId: lobbyId,
-                    size: size, // LƯU KÍCH THƯỚC
-                    player1Id: APP.player1Id,
-                    player1Name: APP.playerName,
-                    player2Id: null,
-                    player2Name: null,
-                    board: JSON.stringify(initialBoard),
-                    turn: APP.player1Id, // X luôn đi trước
-                    isOver: false,
-                    createdAt: Date.now() 
+                await updateDoc(pvpGameRef, { 
+                    player2Id: auth.currentUser.uid, 
+                    player2Name: APP.playerName 
                 });
-                infoEl.innerHTML = `Đã tạo phòng. ${size}x${size}. Bạn là X. Đang chờ đối thủ...`;
+                infoEl.textContent = `Tham gia thành công. ${size}x${size}. Bạn là O.`;
+                
+            } else {
+                // KHÔNG TÌM THẤY phòng của người khác. Kiểm tra xem mình có phòng đang chờ không.
+                const myLobbyQuery = query(gameCollection,
+                    where("player1Id", "==", auth.currentUser.uid),
+                    where("player2Id", "==", null),
+                    where("size", "==", size),
+                    limit(1)
+                );
+                const myExistingLobbies = await getDocs(myLobbyQuery);
+
+                if (!myExistingLobbies.empty) {
+                    // SỬ DỤNG LẠI phòng đang chờ của mình
+                    const lobbyDoc = myExistingLobbies.docs[0];
+                    lobbyId = lobbyDoc.id;
+                    pvpGameRef = doc(gameCollection, lobbyId);
+                    infoEl.innerHTML = `Sử dụng lại phòng chờ của bạn. ${size}x${size}. Bạn là X. Đang chờ đối thủ...`;
+
+                } else {
+                    // TẠO phòng mới
+                    lobbyId = Utils.generateGameId();
+                    pvpGameRef = doc(gameCollection, lobbyId);
+
+                    const initialBoard = Array(boardSize).fill(null);
+                    await setDoc(pvpGameRef, {
+                        gameId: lobbyId,
+                        size: size,
+                        player1Id: auth.currentUser.uid,
+                        player1Name: APP.playerName,
+                        player2Id: null,
+                        player2Name: null,
+                        board: JSON.stringify(initialBoard),
+                        turn: auth.currentUser.uid,
+                        isOver: false,
+                        createdAt: Date.now() 
+                    });
+                    infoEl.innerHTML = `Đã tạo phòng. ${size}x${size}. Bạn là X. Đang chờ đối thủ...`;
+                }
             }
             
             // Lắng nghe trạng thái phòng chơi
@@ -1570,19 +1581,15 @@
 
         if (mode === 'pvp') {
             setupPvp();
-            window.GAME = { 
-                destroy: () => { 
-                    if(unsubscribe) unsubscribe(); 
-                    if(pvpGameRef && APP.player1Id === auth.currentUser.uid && !gameOver && !pvpState.player2Id) {
-                        // Vô hiệu hóa việc xóa phòng để tránh lỗi permission
-                        // deleteDoc(pvpGameRef).catch(e => console.error("Lỗi xóa phòng trống:", e));
-                    }
-                } 
-            };
         } else {
             render();
-            window.GAME = { destroy: () => {} };
         }
+        
+        window.GAME = { 
+            destroy: () => { 
+                if(unsubscribe) unsubscribe();
+            } 
+        };
     }
     
     // --- 8) Battleship (Hải Chiến) Implementation (PvP & AI) ---
@@ -1598,7 +1605,6 @@
         let aiShipBoard = null;
         let aiHits = Array(10).fill(0).map(() => Array(10).fill(null));
         let isAiTurn = false;
-        // FIX: Khai báo biến currentPlayer ở đầu hàm
         let currentPlayer;
         
         const root = document.createElement('div');
@@ -1834,65 +1840,79 @@
         }
         
         async function setupPvp() {
-            // Khởi tạo trạng thái cho PvP (đã giữ nguyên logic tự động ghép phòng)
             bsStatus.textContent = 'Đang tìm phòng chơi...';
-            // ... (Logic PvP tự động ghép phòng - giữ nguyên như phiên bản trước) ...
-            
             const gameCollection = collection(db, "battleship_lobbies");
-            
-            const q = query(gameCollection, where("player2Id", "==", null), limit(1));
-            const availableLobbies = await getDocs(q);
-            
             let lobbyId;
             myPlayerId = auth.currentUser.uid;
-            opponentPlayerId = null;
-
+            
+            // --- Logic Tự động Ghép phòng (NÂNG CẤP) ---
+            
+            // 1. Tìm phòng của người khác đang chờ
+            const opponentLobbyQuery = query(gameCollection, 
+                where("player2Id", "==", null),
+                where("player1Id", "!=", myPlayerId),
+                limit(1)
+            );
+            const availableLobbies = await getDocs(opponentLobbyQuery);
+            
             if (!availableLobbies.empty) {
+                // TÌM THẤY & THAM GIA phòng của người khác
                 const lobbyDoc = availableLobbies.docs[0];
                 lobbyId = lobbyDoc.id;
-                
-                if (lobbyDoc.data().player1Id === myPlayerId) {
-                    pvpGameRef = doc(gameCollection, lobbyId);
-                    bsStatus.innerHTML = `Đã tạo phòng. Bạn là P1. Đang chờ đối thủ...`;
-                } else {
-                    pvpGameRef = doc(gameCollection, lobbyId);
-                    opponentPlayerId = lobbyDoc.data().player1Id;
-                    
-                    const { flatShip: flatShipBoard, flatHit: flatHitBoard } = boardToFirestore(myShipBoard, myHitBoard);
-                    
-                    await updateDoc(pvpGameRef, { 
-                        player2Id: myPlayerId, 
-                        player2Name: APP.playerName,
-                        player2ShipBoard: flatShipBoard,
-                        hitsP2: flatHitBoard,
-                    });
-                    bsStatus.innerHTML = `Tham gia thành công. Bạn là P2. Đang chờ P1 đi trước...`;
-                }
-                
-            } else {
-                lobbyId = Utils.generateGameId();
                 pvpGameRef = doc(gameCollection, lobbyId);
+                opponentPlayerId = lobbyDoc.data().player1Id;
                 
                 const { flatShip: flatShipBoard, flatHit: flatHitBoard } = boardToFirestore(myShipBoard, myHitBoard);
-
-                await setDoc(pvpGameRef, {
-                    gameId: lobbyId,
-                    player1Id: myPlayerId,
-                    player1Name: APP.playerName,
-                    player2Id: null, 
-                    player2Name: null,
-                    player1ShipBoard: flatShipBoard,
-                    player2ShipBoard: null, 
-                    hitsP1: flatHitBoard,
+                
+                await updateDoc(pvpGameRef, { 
+                    player2Id: myPlayerId, 
+                    player2Name: APP.playerName,
+                    player2ShipBoard: flatShipBoard,
                     hitsP2: flatHitBoard,
-                    turn: myPlayerId,
-                    lastAttack: null,
-                    isOver: false,
-                    winnerId: null,
-                    winnerName: null,
-                    createdAt: Date.now()
                 });
-                bsStatus.innerHTML = `Đã tạo phòng. Bạn là P1. Đang chờ đối thủ...`;
+                bsStatus.innerHTML = `Tham gia thành công. Bạn là P2. Đang chờ P1 đi trước...`;
+
+            } else {
+                // KHÔNG TÌM THẤY. Kiểm tra phòng của mình
+                const myLobbyQuery = query(gameCollection,
+                    where("player1Id", "==", myPlayerId),
+                    where("player2Id", "==", null),
+                    limit(1)
+                );
+                const myExistingLobbies = await getDocs(myLobbyQuery);
+
+                if (!myExistingLobbies.empty) {
+                    // SỬ DỤNG LẠI phòng của mình
+                    const lobbyDoc = myExistingLobbies.docs[0];
+                    lobbyId = lobbyDoc.id;
+                    pvpGameRef = doc(gameCollection, lobbyId);
+                    bsStatus.innerHTML = `Sử dụng lại phòng chờ của bạn. Bạn là P1. Đang chờ đối thủ...`;
+                } else {
+                    // TẠO phòng mới
+                    lobbyId = Utils.generateGameId();
+                    pvpGameRef = doc(gameCollection, lobbyId);
+                    
+                    const { flatShip: flatShipBoard, flatHit: flatHitBoard } = boardToFirestore(myShipBoard, myHitBoard);
+
+                    await setDoc(pvpGameRef, {
+                        gameId: lobbyId,
+                        player1Id: myPlayerId,
+                        player1Name: APP.playerName,
+                        player2Id: null, 
+                        player2Name: null,
+                        player1ShipBoard: flatShipBoard,
+                        player2ShipBoard: null, 
+                        hitsP1: flatHitBoard,
+                        hitsP2: flatHitBoard,
+                        turn: myPlayerId,
+                        lastAttack: null,
+                        isOver: false,
+                        winnerId: null,
+                        winnerName: null,
+                        createdAt: Date.now()
+                    });
+                    bsStatus.innerHTML = `Đã tạo phòng. Bạn là P1. Đang chờ đối thủ...`;
+                }
             }
             
             unsubscribe = onSnapshot(pvpGameRef, async (docSnapshot) => {
@@ -1964,11 +1984,6 @@
         window.GAME = { 
             destroy: () => { 
                 if(unsubscribe) unsubscribe(); 
-                // Logic dọn dẹp phòng trống (chỉ người tạo phòng mới làm)
-                if(mode === 'pvp' && pvpGameRef && myPlayerId === auth.currentUser.uid && !opponentPlayerId) {
-                    // Vô hiệu hóa việc xóa phòng để tránh lỗi permission
-                    // deleteDoc(pvpGameRef).catch(e => console.error("Lỗi xóa phòng trống:", e));
-                }
             } 
         };
     }
