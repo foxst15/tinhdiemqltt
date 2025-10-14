@@ -13,7 +13,7 @@
   - ADDED: Battleship (Hải Chiến) now supports both AI (Single Player) and PvP.
   - UPGRADED: Tic-Tac-Toe supports MULTIPLE GRID SIZES (3x3, 6x6, 8x8, 10x10).
   - MODIFIED: Quiz now shows 6 shuffled questions.
-  - FIX (CRITICAL): Added guardrail to Tic-Tac-Toe PvP to prevent 'undefined' turn error on updateDoc.
+  - FIX (CRITICAL): Resolved 'undefined' error in Tic-Tac-Toe PvP and Battleship PvP by ensuring all IDs are defined before Firebase update.
   - FIX: PvP auto-matching logic is now more robust, preventing players from getting stuck in their own lobbies.
 -->
 <style>
@@ -654,7 +654,7 @@
           for(let r=0; r<gridSize; r++) {
               for(let c=0; c<gridSize; c++) {
                   // shipBoard là mảng 2D Boolean, hitBoard là mảng 2D string
-                  if(shipBoard[r][c] && hitBoard[r][c] === 'hit') {
+                  if (shipBoard && shipBoard[r] && shipBoard[r][c] && hitBoard && hitBoard[r] && hitBoard[r][c] === 'hit') {
                       hits++;
                   }
               }
@@ -1418,8 +1418,8 @@
                 render();
                 if(!checkEndState(false)) setTimeout(aiMove, 500);
             } else if (mode === 'pvp' && pvpGameRef && auth.currentUser.uid === pvpState.turn) {
-                 // FIX: Add a guardrail to prevent moves before both players are in the lobby.
-                if (!pvpState.player1Id || !pvpState.player2Id) {
+                 // Guardrail: Ngăn Player 1 đánh trước khi P2 tham gia
+                if (!pvpState.player2Id) {
                     infoEl.textContent = 'Đang chờ người chơi thứ 2 tham gia...';
                     return;
                 }
@@ -1429,13 +1429,22 @@
                  board[index] = playerMark;
                  render(); // Cập nhật local ngay lập tức
                  
-                 const nextTurnId = (auth.currentUser.uid === pvpState.player1Id) ? pvpState.player2Id : pvpState.player1Id;
+                 const nextTurnId = (auth.currentUser.uid === pvpState.player1Id) 
+                                    ? (pvpState.player2Id || pvpState.player1Id) // Fallback to P1 if P2 ID is somehow missing
+                                    : (pvpState.player1Id || pvpState.player2Id); // Fallback to P2 if P1 ID is somehow missing
+
+                 // Đảm bảo nextTurnId không bao giờ là undefined
+                 const finalNextTurnId = nextTurnId || (pvpState.player1Id || pvpState.player2Id) || null; // Dùng null nếu không tìm thấy ID nào
 
                  // Đẩy lên Cloud
                  updateDoc(pvpGameRef, { 
                     board: JSON.stringify(board), 
-                    turn: nextTurnId
+                    turn: finalNextTurnId // ĐÃ SỬA: nextTurnId luôn là một chuỗi ID hoặc null
+                 }).catch(err => {
+                    console.error("Lỗi updateDoc TicTacToe:", err);
+                    showAlert("Lỗi đồng bộ Cloud. Vui lòng kiểm tra Rules/kết nối.");
                  });
+                 
                  checkEndState(true);
             }
         }
@@ -1491,8 +1500,11 @@
                 
                 if (mode === 'pvp') {
                      // Nếu PvP: Chỉ click được khi đến lượt mình và ô trống
-                    cellEl.onclick = () => { if (isMyTurn && cell === null && !state.isOver) handleClick(index); };
-                    cellEl.style.cursor = (isMyTurn && cell === null && !state.isOver) ? 'pointer' : 'default';
+                    cellEl.onclick = () => { 
+                        if (isMyTurn && cell === null && !state.isOver && state.player2Id) handleClick(index); 
+                        else if (!state.player2Id && isMyTurn) infoEl.textContent = 'Vui lòng chờ đối thủ tham gia!';
+                    };
+                    cellEl.style.cursor = (isMyTurn && cell === null && !state.isOver && state.player2Id) ? 'pointer' : 'default';
                 } else {
                     // Nếu AI: Chỉ click khi là X
                     cellEl.onclick = () => handleClick(index);
@@ -1618,7 +1630,9 @@
         let aiShipBoard = null;
         let aiHits = Array(10).fill(0).map(() => Array(10).fill(null));
         let isAiTurn = false;
-        let currentPlayer;
+        let currentPlayer = myPlayerId; // Start with player turn
+        let pvpState = {}; // Sẽ được cập nhật từ onSnapshot
+
         
         const root = document.createElement('div');
         root.innerHTML = `
@@ -1662,6 +1676,8 @@
         }
 
         function renderBoards(state = {}) {
+            pvpState = state; // Update PvP State for Battleship
+            
             let isReady = true;
             let isMyTurn = true;
             let currentOpponentHitBoard = null;
@@ -1800,10 +1816,17 @@
             if (mode === 'pvp') {
                 // Logic PvP (Cloud)
                 if (!pvpGameRef || !auth.currentUser) return;
+                
+                // Cần đảm bảo opponentPlayerId là ID hợp lệ, không phải null hoặc undefined
+                const nextTurnId = opponentPlayerId || myPlayerId; // Fallback to self if opponentId is somehow lost
+
                 await updateDoc(pvpGameRef, { 
                     lastAttack: JSON.stringify({ r, c, attackerId: myPlayerId }),
-                    turn: opponentPlayerId, // Chuyển lượt cho đối thủ
-                }); 
+                    turn: nextTurnId, // Chuyển lượt cho đối thủ
+                }).catch(err => {
+                    console.error("Lỗi updateDoc Battleship:", err);
+                    showAlert("Lỗi đồng bộ Cloud Hải Chiến. Vui lòng kiểm tra Rules/kết nối.");
+                 });
                 
             } else { 
                 // Logic AI (Single Player)
@@ -1858,7 +1881,7 @@
             let lobbyId;
             myPlayerId = auth.currentUser.uid;
             
-            // --- FIX: Logic Tự động Ghép phòng (Tránh lỗi Index) ---
+            // --- Logic Tự động Ghép phòng (FIXED: Đảm bảo opponentPlayerId được gán ngay) ---
             
             // 1. Tìm các phòng đang chờ
             const openLobbiesQuery = query(gameCollection, 
@@ -1874,7 +1897,7 @@
                 // TÌM THẤY & THAM GIA phòng của người khác
                 lobbyId = opponentLobbyDoc.id;
                 pvpGameRef = doc(gameCollection, lobbyId);
-                opponentPlayerId = opponentLobbyDoc.data().player1Id;
+                opponentPlayerId = opponentLobbyDoc.data().player1Id; // GÁN NGAY
                 
                 const { flatShip: flatShipBoard, flatHit: flatHitBoard } = boardToFirestore(myShipBoard, myHitBoard);
                 
@@ -1932,8 +1955,10 @@
             unsubscribe = onSnapshot(pvpGameRef, async (docSnapshot) => {
                 if (docSnapshot.exists()) {
                     const state = docSnapshot.data();
+                    
+                    // CẬP NHẬT opponentPlayerId KHI TRẠNG THÁI THAY ĐỔI
                     opponentPlayerId = myPlayerId === state.player1Id ? state.player2Id : state.player1Id;
-
+                    
                     if (state.lastAttack) {
                         const attackData = JSON.parse(state.lastAttack);
                         
@@ -1998,6 +2023,10 @@
         window.GAME = { 
             destroy: () => { 
                 if(unsubscribe) unsubscribe(); 
+                // FIX: Thêm logic dọn dẹp cho Hải Chiến, dùng myPlayerId và pvpState.player2Id để tránh undefined
+                if (mode === 'pvp' && pvpGameRef && myPlayerId === auth.currentUser.uid && !pvpState.player2Id) {
+                    deleteDoc(pvpGameRef).catch(e => console.error("Lỗi xóa phòng Hải Chiến trống:", e));
+                }
             } 
         };
     }
@@ -2041,5 +2070,3 @@
 <script src="/_vercel/speed-insights/script.js"></script>
 </body>
 </html>
-
-
