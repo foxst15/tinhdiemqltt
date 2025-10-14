@@ -1499,21 +1499,22 @@
             const gameCollection = collection(db, "tictactoe_lobbies");
             let lobbyId;
 
-            // --- Logic Tự động Ghép phòng (NÂNG CẤP) ---
-
-            // 1. Tìm phòng của người khác đang chờ
-            const opponentLobbyQuery = query(gameCollection, 
+            // --- FIX: Logic Tự động Ghép phòng (Tránh lỗi Index) ---
+            
+            // 1. Tìm các phòng đang chờ (không lọc theo player1Id)
+            const openLobbiesQuery = query(gameCollection, 
                 where("player2Id", "==", null), 
                 where("size", "==", size),
-                where("player1Id", "!=", auth.currentUser.uid),
-                limit(1)
+                limit(10) // Lấy một vài phòng để lọc ở client
             );
-            const availableLobbies = await getDocs(opponentLobbyQuery);
+            const availableLobbiesSnapshot = await getDocs(openLobbiesQuery);
             
-            if (!availableLobbies.empty) {
+            // 2. Lọc ở Client để tìm phòng không phải của mình
+            const opponentLobbyDoc = availableLobbiesSnapshot.docs.find(doc => doc.data().player1Id !== auth.currentUser.uid);
+
+            if (opponentLobbyDoc) {
                 // TÌM THẤY & THAM GIA phòng của người khác
-                const lobbyDoc = availableLobbies.docs[0];
-                lobbyId = lobbyDoc.id;
+                lobbyId = opponentLobbyDoc.id;
                 pvpGameRef = doc(gameCollection, lobbyId);
                 
                 await updateDoc(pvpGameRef, { 
@@ -1845,22 +1846,23 @@
             let lobbyId;
             myPlayerId = auth.currentUser.uid;
             
-            // --- Logic Tự động Ghép phòng (NÂNG CẤP) ---
+            // --- FIX: Logic Tự động Ghép phòng (Tránh lỗi Index) ---
             
-            // 1. Tìm phòng của người khác đang chờ
-            const opponentLobbyQuery = query(gameCollection, 
+            // 1. Tìm các phòng đang chờ
+            const openLobbiesQuery = query(gameCollection, 
                 where("player2Id", "==", null),
-                where("player1Id", "!=", myPlayerId),
-                limit(1)
+                limit(10)
             );
-            const availableLobbies = await getDocs(opponentLobbyQuery);
+            const availableLobbiesSnapshot = await getDocs(openLobbiesQuery);
+
+            // 2. Lọc ở Client để tìm phòng không phải của mình
+            const opponentLobbyDoc = availableLobbiesSnapshot.docs.find(doc => doc.data().player1Id !== myPlayerId);
             
-            if (!availableLobbies.empty) {
+            if (opponentLobbyDoc) {
                 // TÌM THẤY & THAM GIA phòng của người khác
-                const lobbyDoc = availableLobbies.docs[0];
-                lobbyId = lobbyDoc.id;
+                lobbyId = opponentLobbyDoc.id;
                 pvpGameRef = doc(gameCollection, lobbyId);
-                opponentPlayerId = lobbyDoc.data().player1Id;
+                opponentPlayerId = opponentLobbyDoc.data().player1Id;
                 
                 const { flatShip: flatShipBoard, flatHit: flatHitBoard } = boardToFirestore(myShipBoard, myHitBoard);
                 
@@ -2027,4 +2029,3 @@
 <script src="/_vercel/speed-insights/script.js"></script>
 </body>
 </html>
-
