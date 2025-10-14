@@ -17,6 +17,10 @@
   - ADDED: Gemini LLM feature: Quiz Explanation Assistant (in-game modal).
   - REMOVED: Local storage save/load for player name.
   - FIX: Flappy logic fixed.
+  - FIX: Memory and 2048 initialization and play logic corrected.
+  - FIX (CRITICAL): CSS grid issues for Memory and 2048 (display was vertical).
+  - FIX (CRITICAL): PvP: Implemented automatic lobby matching (no more manual ID entry).
+  - FIX: Tic-Tac-Toe UI is fixed with inline CSS.
 -->
 <style>
   @keyframes background-pan {
@@ -159,14 +163,59 @@
   .footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;color:var(--muted);font-size:13px}
   
   /* Game Specific Styles (Responsive) */
+  /* TTT CSS được chuyển vào JS để dễ điều khiển hơn trên mobile */
   .tictactoe-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 300px; }
   .ttt-cell { width: 100%; height: 100%; aspect-ratio: 1 / 1; font-size: 2.5em;}
 
-  .board2048 { max-width: 300px; }
-  .tile2048 { font-size: 1.5em; }
+  /* FIXED: 2048 Grid CSS */
+  .board2048 { 
+    display: grid; 
+    grid-template-columns: repeat(4, 1fr); 
+    gap: 10px; 
+    background-color: #334155; 
+    padding: 10px; 
+    border-radius: 8px; 
+    width: 100%; 
+    max-width: 300px; 
+    height: auto; 
+    aspect-ratio: 1/1; /* Đảm bảo hình vuông */
+  }
+  .tile2048 { 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    border-radius: 4px; 
+    background-color: rgba(255,255,255,0.05); 
+    font-weight: bold; 
+    font-size: 1.5em; 
+  }
   
-  .memory-grid { max-width: 350px; }
-  .memory-card {font-size: 2.2em; }
+  /* FIXED: Memory Grid CSS */
+  .memory-grid { 
+    display: grid; 
+    grid-template-columns: repeat(4, 1fr); /* 6 cặp = 4 cột; 8 cặp = 4 cột; 10 cặp = 5 cột */
+    gap: 10px; 
+    max-width: 350px; 
+    margin: auto; 
+    width: 100%;
+  }
+  .memory-card {
+    aspect-ratio: 1 / 1; 
+    background-color: rgba(0,0,0,0.2); 
+    border-radius: 8px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 2.2em; 
+    cursor: pointer; 
+    transition: background-color 0.2s; 
+    user-select: none; 
+    color: transparent; 
+  }
+  .memory-card.flipped, .memory-card.matched { color: #031226 !important; }
+  .memory-card.matched { background: linear-gradient(90deg,var(--accent2),var(--accent1)); }
+  .memory-card.flipped { background-color: rgba(255,255,255,0.1); }
+
 
   /* Battleship Grid */
   .battleship-grid {
@@ -491,7 +540,7 @@
 <script type="module">
   // Import the functions you need from the SDKs you need
   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-app.js";
-  import { getFirestore, collection, query, onSnapshot, addDoc, orderBy, limit, where, getDoc, setDoc, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-firestore.js";
+  import { getFirestore, collection, query, onSnapshot, addDoc, orderBy, limit, where, getDoc, setDoc, doc, updateDoc, deleteDoc, arrayUnion, getDocs } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-firestore.js";
   import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-auth.js";
   
   // Cấu hình Firebase mới của bạn
@@ -588,6 +637,7 @@
                 for (let dc = -1; dc <= 1; dc++) {
                   const nr = r + dr;
                   const nc = c + dc;
+                  // Kiểm tra xem ô đó CÓ THUYỀN hay không
                   if (nr >= 0 && nr < 10 && nc >= 0 && nc < 10 && board[nr][nc]) {
                     canPlace = false;
                     break;
@@ -619,6 +669,7 @@
           let hits = 0;
           for(let r=0; r<10; r++) {
               for(let c=0; c<10; c++) {
+                  // shipBoard là mảng 2D Boolean, hitBoard là mảng 2D string
                   if(shipBoard[r][c] && hitBoard[r][c] === 'hit') {
                       hits++;
                   }
@@ -1118,7 +1169,7 @@
         }
     }
 
-    // --- 2) Memory Implementation ---
+    // --- 2) Memory Implementation (FIXED: Added game logic back) ---
     function initMemory(container, mode){
         const difficulty = getEl('memoryDifficulty').value;
         const pairs = difficulty==='easy'?6: (difficulty==='normal'?8:10);
@@ -1128,7 +1179,12 @@
         let flipped = [], matched = new Set(), moves=0, lockBoard = false;
         const grid = document.createElement('div'); 
         grid.className = 'memory-grid';
-        grid.style.gridTemplateColumns = `repeat(${pairs === 6 ? 4 : (pairs === 8 ? 4 : 5)}, 1fr)`;
+        
+        // FIXED: Đảm bảo grid column đúng cho 6, 8, 10 cặp
+        let columns = 4;
+        if (pairs === 10) columns = 5;
+        grid.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+
         container.appendChild(grid);
         
         cards.forEach((s,i)=>{
@@ -1147,6 +1203,7 @@
           const cardEl = grid.children[i];
           flipped.push(i);
           cardEl.classList.add('flipped');
+          // cardEl.style.color = '#031226'; // Đã dùng CSS class
 
           if(flipped.length===2){
             moves++; info.textContent='Moves: '+moves; lockBoard = true;
@@ -1155,12 +1212,16 @@
               matched.add(idx1); matched.add(idx2); 
               grid.children[idx1].classList.add('matched');
               grid.children[idx2].classList.add('matched');
+              grid.children[idx1].classList.remove('flipped');
+              grid.children[idx2].classList.remove('flipped');
               flipped=[]; lockBoard=false; 
               if(matched.size===cards.length) finishMem(); 
             } else { 
               setTimeout(()=>{ 
                 grid.children[idx1].classList.remove('flipped');
                 grid.children[idx2].classList.remove('flipped');
+                // grid.children[idx1].style.color = 'transparent'; // Đã dùng CSS class
+                // grid.children[idx2].style.color = 'transparent'; // Đã dùng CSS class
                 flipped=[]; lockBoard=false;
               }, 800); 
             }
@@ -1295,7 +1356,7 @@
       window.GAME = { destroy(){ clearInterval(tick); document.removeEventListener('keydown', keyHandler); } };
     }
 
-    /* 6) 2048 Implementation */
+    /* 6) 2048 Implementation (FIXED: Added missing rotate function) */
     function init2048(container, mode){
         let grid = newGrid(), score=0;
         // Implement PvP here if needed, current is AI/single player logic
@@ -1305,6 +1366,7 @@
         container.appendChild(board);
         const scoreEl = document.createElement('div'); scoreEl.className='muted small'; scoreEl.textContent='Score: 0'; container.appendChild(scoreEl);
         renderGrid();
+        
         function newGrid(){ const g=Array.from({length:4},()=>Array(4).fill(0)); randomTile(g); randomTile(g); return g; }
         function randomTile(g){
           const empt=[]; for(let r=0;r<4;r++) for(let c=0;c<4;c++) if(!g[r][c]) empt.push([r,c]);
@@ -1326,7 +1388,12 @@
           if(JSON.stringify(g)!==old){ randomTile(g); grid=g; score+=gained; renderGrid(); if(checkWin(grid)){ showAlert('Bạn thắng! Score: '+score, () => {pushScore(APP.playerName, score, '2048'); closeGame();}); } }
         }
         function dirSteps(dir){ if(dir==='left') return 0; if(dir==='up') return 1; if(dir==='right') return 2; if(dir==='down') return 3; }
-        function rotate(m){ const n=Array.from({length:4},()=>Array(4).fill(0)); for(let r=0;r<4;r++) for(let c=0;c<4;c++) n[r][c]=m[3-c][r]; return n; }
+        function rotate(m){ 
+            // Hàm xoay ma trận 90 độ (cần thiết cho 2048)
+            const n=Array.from({length:4},()=>Array(4).fill(0)); 
+            for(let r=0;r<4;r++) for(let c=0;c<4;c++) n[r][c]=m[3-c][r]; 
+            return n; 
+        }
         function checkWin(g){ return g.some(r=>r.some(c=>c>=2048)); }
         const onKey = e => { if(e.key.includes('Arrow')) move(e.key.replace('Arrow','').toLowerCase()); };
         document.addEventListener('keydown', onKey);
@@ -1342,7 +1409,9 @@
         let unsubscribe = null;
         
         const boardEl = document.createElement('div');
-        boardEl.className = 'tictactoe-board';
+        // FIXED: Apply inline style for TTT board to ensure grid works on all screens
+        boardEl.style.cssText = 'display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 300px; margin: 15px auto;';
+
         container.appendChild(boardEl);
         
         const infoEl = document.createElement('div');
@@ -1350,6 +1419,8 @@
         infoEl.style.marginTop = '15px';
         infoEl.style.textAlign = 'center';
         container.appendChild(infoEl);
+        
+        let pvpState = {}; // Khai báo pvpState ở scope ngoài
 
 
         function checkWinner() {
@@ -1383,14 +1454,27 @@
         }
 
         function handleClick(index) {
-            if (gameOver || board[index] || currentPlayer !== 'X') return;
-            board[index] = 'X';
-            currentPlayer = mode === 'ai' ? 'O' : 'Waiting';
-            render();
-            if(!checkEndState(false) && mode === 'ai') setTimeout(aiMove, 500);
+            // Check nếu không phải lượt mình, hoặc game over, hoặc ô đã có người đánh
+            if (gameOver || board[index]) return;
             
-            if (mode === 'pvp' && pvpGameRef && !gameOver) {
-                updateDoc(pvpGameRef, { board: JSON.stringify(board), turn: auth.currentUser.uid === APP.player1Id ? APP.player2Id : APP.player1Id });
+            if (mode === 'ai') {
+                if (currentPlayer !== 'X') return; // Chỉ cho người chơi (X) click
+                board[index] = 'X';
+                currentPlayer = 'O';
+                render();
+                if(!checkEndState(false)) setTimeout(aiMove, 500);
+            } else if (mode === 'pvp' && pvpGameRef && auth.currentUser.uid === pvpState.turn) {
+                 // Logic PvP
+                 const playerMark = auth.currentUser.uid === pvpState.player1Id ? 'X' : 'O';
+                 board[index] = playerMark;
+                 render(); // Cập nhật local ngay lập tức
+                 
+                 // Đẩy lên Cloud
+                 updateDoc(pvpGameRef, { 
+                    board: JSON.stringify(board), 
+                    turn: auth.currentUser.uid === pvpState.player1Id ? pvpState.player2Id : pvpState.player1Id 
+                 });
+                 checkEndState(true);
             }
         }
         
@@ -1404,35 +1488,37 @@
             checkEndState(false);
         }
 
-        function render(pvpState = {}) {
+        function render(state = {}) {
+            pvpState = state; // Cập nhật trạng thái PvP
+
             boardEl.innerHTML = '';
             
             let isMyTurn = true;
             if (mode === 'pvp') {
-                const isHost = auth.currentUser.uid === pvpState.player1Id;
-                const isTurn = auth.currentUser.uid === pvpState.turn;
+                const isTurn = auth.currentUser.uid === state.turn;
                 isMyTurn = isTurn;
                 
                 // Cập nhật trạng thái phòng chơi
-                infoEl.textContent = pvpState.winner ? `Game Over. ${pvpState.winner} thắng!` : 
-                                      pvpState.player2Id ? (isTurn ? 'Lượt của BẠN' : 'Đang chờ đối thủ...') : 
+                infoEl.textContent = state.winner ? `Game Over. ${state.winner} thắng!` : 
+                                      state.player2Id ? (isTurn ? 'Lượt của BẠN' : 'Đang chờ đối thủ...') : 
                                       'Đang chờ người chơi thứ 2...';
                 
-                if (pvpState.board) board = JSON.parse(pvpState.board);
+                if (state.board) board = JSON.parse(state.board);
             } else {
                 infoEl.textContent = 'Lượt của bạn (X)';
             }
             
             board.forEach((cell, index) => {
                 const cellEl = document.createElement('div');
-                cellEl.className = 'ttt-cell';
+                // FIXED: Apply inline style for TTT cell to ensure correct size/aspect ratio
+                cellEl.style.cssText = 'width: 100%; aspect-ratio: 1 / 1; background-color: rgba(0,0,0,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 2.5em; font-weight: bold; cursor: pointer; transition: background-color 0.2s;';
                 cellEl.textContent = cell;
                 cellEl.style.color = cell === 'X' ? 'var(--accent1)' : 'var(--accent2)';
                 
                 if (mode === 'pvp') {
                      // Nếu PvP: Chỉ click được khi đến lượt mình và ô trống
-                    cellEl.onclick = () => { if (isMyTurn && cell === null && !pvpState.isOver) handleClick(index); };
-                    cellEl.style.cursor = (isMyTurn && cell === null && !pvpState.isOver) ? 'pointer' : 'default';
+                    cellEl.onclick = () => { if (isMyTurn && cell === null && !state.isOver) handleClick(index); };
+                    cellEl.style.cursor = (isMyTurn && cell === null && !state.isOver) ? 'pointer' : 'default';
                 } else {
                     // Nếu AI: Chỉ click khi là X
                     cellEl.onclick = () => handleClick(index);
@@ -1444,42 +1530,57 @@
         
         async function setupPvp() {
             infoEl.textContent = 'Đang tìm phòng chơi...';
-            const lobbyId = prompt("Nhập ID phòng để tham gia, hoặc nhấn OK để tạo phòng mới:");
-            
             const gameCollection = collection(db, "tictactoe_lobbies");
             
-            if (lobbyId && lobbyId.length === 6) {
-                // Tham gia phòng
-                pvpGameRef = doc(gameCollection, lobbyId);
-                const docSnap = await getDoc(pvpGameRef);
+            // --- Logic Tự động Ghép phòng ---
+            const q = query(gameCollection, where("player2Id", "==", null), limit(1));
+            const availableLobbies = await getDocs(q);
+            
+            let lobbyId;
+            let isJoining = false;
+            
+            if (!availableLobbies.empty) {
+                // TÌM THẤY phòng đang chờ
+                const lobbyDoc = availableLobbies.docs[0];
+                lobbyId = lobbyDoc.id;
                 
-                if (docSnap.exists() && !docSnap.data().player2Id) {
-                    const hostId = docSnap.data().player1Id;
-                    await updateDoc(pvpGameRef, { player2Id: auth.currentUser.uid, player2Name: APP.playerName, turn: hostId });
-                    APP.player1Id = hostId; APP.player2Id = auth.currentUser.uid;
-                    infoEl.textContent = `Tham gia thành công. ID phòng: ${lobbyId}. Bạn là O.`;
+                if (lobbyDoc.data().player1Id === auth.currentUser.uid) {
+                    // Nếu chính mình tạo phòng này, chờ người khác vào
+                    pvpGameRef = doc(gameCollection, lobbyId);
+                    infoEl.innerHTML = `Đã tạo phòng. ID: <strong>${lobbyId}</strong>. Bạn là X. Đang chờ đối thủ...`;
                 } else {
-                    showAlert('Phòng không tồn tại hoặc đã đầy.', () => closeGame());
-                    return;
+                    // Tham gia phòng
+                    pvpGameRef = doc(gameCollection, lobbyId);
+                    isJoining = true;
+                    
+                    APP.player1Id = lobbyDoc.data().player1Id; 
+                    APP.player2Id = auth.currentUser.uid;
+                    
+                    await updateDoc(pvpGameRef, { player2Id: APP.player2Id, player2Name: APP.playerName });
+                    infoEl.textContent = `Tham gia thành công. ID phòng: ${lobbyId}. Bạn là O.`;
                 }
+                
             } else {
-                // Tạo phòng mới
-                const newLobbyId = Utils.generateGameId();
-                pvpGameRef = doc(gameCollection, newLobbyId);
+                // KHÔNG TÌM THẤY, TẠO phòng mới
+                lobbyId = Utils.generateGameId();
+                pvpGameRef = doc(gameCollection, lobbyId);
+                
                 APP.player1Id = auth.currentUser.uid;
                 APP.player2Id = null;
 
                 const initialBoard = Array(9).fill(null);
                 await setDoc(pvpGameRef, {
+                    gameId: lobbyId,
                     player1Id: APP.player1Id,
                     player1Name: APP.playerName,
                     player2Id: null,
                     player2Name: null,
                     board: JSON.stringify(initialBoard),
                     turn: APP.player1Id, // X luôn đi trước
-                    isOver: false
+                    isOver: false,
+                    createdAt: Date.now() // Dùng cho logic dọn dẹp
                 });
-                infoEl.innerHTML = `Đã tạo phòng. ID phòng: <strong>${newLobbyId}</strong>. Bạn là X. Chia sẻ ID này.`;
+                infoEl.innerHTML = `Đã tạo phòng. ID: <strong>${lobbyId}</strong>. Bạn là X. Đang chờ đối thủ...`;
             }
             
             // Lắng nghe trạng thái phòng chơi
@@ -1491,13 +1592,28 @@
                         unsubscribe();
                         showAlert(`Game Over! ${state.winner} thắng!`, () => closeGame());
                     }
+                } else {
+                    // Phòng đã bị xóa (người chơi thoát)
+                    showAlert('Phòng đã bị đóng bởi người chơi khác.', () => closeGame());
                 }
+            }, (error) => {
+                 console.error("Firebase PvP snapshot error:", error);
+                 showAlert('Lỗi kết nối PvP. (Kiểm tra Rules)', () => closeGame());
             });
         }
 
         if (mode === 'pvp') {
             setupPvp();
-            window.GAME = { destroy: () => { if(unsubscribe) unsubscribe(); } };
+            window.GAME = { 
+                destroy: () => { 
+                    if(unsubscribe) unsubscribe(); 
+                    // Logic dọn dẹp phòng trống (chỉ người tạo phòng mới làm)
+                    if(pvpGameRef && APP.player1Id === auth.currentUser.uid && !gameOver && !pvpState.player2Id) {
+                        // Nếu phòng vẫn còn trống sau 10 giây (dùng logic tạm thời)
+                        deleteDoc(pvpGameRef).catch(e => console.error("Lỗi xóa phòng trống:", e));
+                    }
+                } 
+            };
         } else {
             render();
             window.GAME = { destroy: () => {} };
@@ -1534,7 +1650,7 @@
                     <div id="opponentBoard" class="battleship-grid"></div>
                 </div>
             </div>
-            <div id="shipsLeft" style="margin-top: 15px; text-align: center; color: var(--muted);">Thuyền còn lại: 5</div>
+            <div id="shipsLeft" style="margin-top: 15px; text-align: center; color: var(--muted);"></div>
         `;
         container.appendChild(root);
 
@@ -1554,7 +1670,7 @@
                 bsTurnInfo.textContent = `Phòng ID: ${state.gameId} | Bạn: ${APP.playerName} (${isHost ? 'X' : 'O'})`;
             } else if (state.isOver) {
                  bsStatus.textContent = `GAME OVER! ${state.winnerName} thắng!`;
-                 bsTurnInfo.textContent = '';
+                 bsTurnInfo.textContent = `Người thắng: ${state.winnerName}. ID phòng: ${state.gameId}`;
             } else {
                  bsStatus.textContent = 'Đang chờ người chơi 2...';
             }
@@ -1562,17 +1678,20 @@
             // Cập nhật Hit boards từ Cloud
             if (isReady) {
                 if (isHost) {
-                    myHitBoard = JSON.parse(state.hitsP2).map(r => r.split(','));
-                    opponentHitBoard = JSON.parse(state.hitsP1).map(r => r.split(','));
+                    // hitsP2 là các cú đánh của Player 2 vào Player 1 (Board của mình)
+                    // FIXED: Sửa cách parse board 1D string thành 2D array
+                    myHitBoard = state.hitsP2.split(';').map(row => row.split(',').map(v => v === 'null' ? null : v));
+                    // hitsP1 là các cú đánh của Player 1 vào Player 2 (Board đối thủ)
+                    opponentHitBoard = state.hitsP1.split(';').map(row => row.split(',').map(v => v === 'null' ? null : v));
                 } else {
-                    myHitBoard = JSON.parse(state.hitsP1).map(r => r.split(','));
-                    opponentHitBoard = JSON.parse(state.hitsP2).map(r => r.split(','));
+                    // Ngược lại nếu là Player 2
+                    myHitBoard = state.hitsP1.split(';').map(row => row.split(',').map(v => v === 'null' ? null : v));
+                    opponentHitBoard = state.hitsP2.split(';').map(row => row.split(',').map(v => v === 'null' ? null : v));
                 }
             }
 
             // Render My Board
             myBoardEl.innerHTML = '';
-            let myShipsLeft = 0;
             for (let r = 0; r < 10; r++) {
                 for (let c = 0; c < 10; c++) {
                     const cell = document.createElement('div');
@@ -1584,7 +1703,6 @@
                             cell.textContent = '🔥';
                         } else {
                             cell.textContent = '🛥️';
-                            myShipsLeft++;
                         }
                     } else if (myHitBoard[r][c] === 'miss') {
                         cell.classList.add('miss');
@@ -1617,7 +1735,7 @@
                 }
             }
             
-            shipsLeftEl.textContent = `Thuyền còn lại: ${Utils.countShipsLeft(myShipBoard, myHitBoard)}/17`;
+            shipsLeftEl.textContent = `Thuyền của bạn còn: ${Utils.countShipsLeft(myShipBoard, myHitBoard)}/17`;
             if (state.isOver) {
                 // Đảm bảo không thể nhấn sau khi game kết thúc
                 opponentBoardEl.querySelectorAll('.b-cell').forEach(c => c.onclick = null);
@@ -1625,7 +1743,7 @@
         }
         
         async function handleAttack(e) {
-            if (!pvpGameRef) return;
+            if (!pvpGameRef || !auth.currentUser) return;
             const r = parseInt(e.target.dataset.r);
             const c = parseInt(e.target.dataset.c);
             
@@ -1634,75 +1752,93 @@
                 return;
             }
 
-            // Bắn vào ô đó (Ghi vào mảng hits của đối thủ)
-            const targetHitBoardJsonField = myPlayerId === state.player1Id ? 'hitsP1' : 'hitsP2';
-            
             // Tạm thời disable click
             opponentBoardEl.querySelectorAll('.b-cell').forEach(c => c.onclick = null);
 
             // Cập nhật trạng thái
             await updateDoc(pvpGameRef, { 
                 lastAttack: JSON.stringify({ r, c, attackerId: myPlayerId }),
-                turn: opponentPlayerId,
+                turn: opponentPlayerId, // Chuyển lượt cho đối thủ
             }); 
         }
         
         async function setupPvp() {
             bsStatus.textContent = 'Đang tìm phòng chơi...';
-            const lobbyId = prompt("Nhập ID phòng để tham gia, hoặc nhấn OK để tạo phòng mới (10x10):");
             
             const gameCollection = collection(db, "battleship_lobbies");
-            const newLobbyId = lobbyId && lobbyId.length === 6 ? lobbyId : Utils.generateGameId();
-            pvpGameRef = doc(gameCollection, newLobbyId);
-            myPlayerId = auth.currentUser.uid;
             
-            if (lobbyId && lobbyId.length === 6) {
-                // Tham gia phòng
-                const docSnap = await getDoc(pvpGameRef);
+            // --- Logic Tự động Ghép phòng ---
+            const q = query(gameCollection, where("player2Id", "==", null), limit(1));
+            const availableLobbies = await getDocs(q);
+            
+            let lobbyId;
+            let isJoining = false;
+
+            if (!availableLobbies.empty) {
+                // TÌM THẤY phòng đang chờ
+                const lobbyDoc = availableLobbies.docs[0];
+                lobbyId = lobbyDoc.id;
                 
-                if (docSnap.exists() && !docSnap.data().player2Id) {
-                    const hostState = docSnap.data();
-                    opponentPlayerId = hostState.player1Id;
+                if (lobbyDoc.data().player1Id === auth.currentUser.uid) {
+                    // Nếu chính mình tạo phòng này, chờ người khác vào
+                    pvpGameRef = doc(gameCollection, lobbyId);
+                    bsStatus.innerHTML = `Đã tạo phòng. ID: <strong>${lobbyId}</strong>. Bạn là P1. Đang chờ đối thủ...`;
+                } else {
+                    // Tham gia phòng
+                    pvpGameRef = doc(gameCollection, lobbyId);
+                    isJoining = true;
                     
-                    // Chuẩn hóa board sang JSON string 1D (sử dụng dấu phẩy)
-                    const flatShipBoard = myShipBoard.map(row => row.join(',')).join(';');
-                    const flatHitBoard = myHitBoard.map(row => row.map(v => v || 'null').join(',')).join(';');
+                    opponentPlayerId = lobbyDoc.data().player1Id;
+                    
+                    const boardToFirestore = (board2D, hitBoard2D) => {
+                        const flatShip = board2D.map(row => row.join(',')).join(';');
+                        const flatHit = hitBoard2D.map(row => row.map(v => v || 'null').join(',')).join(';');
+                        return { flatShip, flatHit };
+                    };
+                    
+                    const { flatShip: flatShipBoard, flatHit: flatHitBoard } = boardToFirestore(myShipBoard, myHitBoard);
                     
                     await updateDoc(pvpGameRef, { 
                         player2Id: myPlayerId, 
                         player2Name: APP.playerName,
                         player2ShipBoard: flatShipBoard,
                         hitsP2: flatHitBoard,
-                        turn: hostState.player1Id, // X luôn đi trước
                     });
-                    bsStatus.innerHTML = `Tham gia thành công. ID phòng: <strong>${newLobbyId}</strong>. Đang chờ X đi trước...`;
-                } else {
-                    showAlert('Phòng không tồn tại hoặc đã đầy.', () => closeGame());
-                    return;
+                    bsStatus.innerHTML = `Tham gia thành công. ID phòng: ${lobbyId}. Bạn là P2. Đang chờ P1 đi trước...`;
                 }
+                
             } else {
-                // Tạo phòng mới (Player 1)
+                // KHÔNG TÌM THẤY, TẠO phòng mới
+                lobbyId = Utils.generateGameId();
+                pvpGameRef = doc(gameCollection, lobbyId);
+                
+                const boardToFirestore = (board2D, hitBoard2D) => {
+                    const flatShip = board2D.map(row => row.join(',')).join(';');
+                    const flatHit = hitBoard2D.map(row => row.map(v => v || 'null').join(',')).join(';');
+                    return { flatShip, flatHit };
+                };
+                
                 opponentPlayerId = null;
-                const flatShipBoard = myShipBoard.map(row => row.join(',')).join(';');
-                const flatHitBoard = myHitBoard.map(row => row.map(v => v || 'null').join(',')).join(';');
+                const { flatShip: flatShipBoard, flatHit: flatHitBoard } = boardToFirestore(myShipBoard, myHitBoard);
 
                 await setDoc(pvpGameRef, {
-                    gameId: newLobbyId,
+                    gameId: lobbyId,
                     player1Id: myPlayerId,
                     player1Name: APP.playerName,
                     player2Id: null,
                     player2Name: null,
                     player1ShipBoard: flatShipBoard,
-                    player2ShipBoard: null, // Sẽ được Player 2 gửi lên
+                    player2ShipBoard: null, 
                     hitsP1: flatHitBoard,
                     hitsP2: flatHitBoard,
                     turn: myPlayerId,
                     lastAttack: null,
                     isOver: false,
                     winnerId: null,
-                    winnerName: null
+                    winnerName: null,
+                    createdAt: Date.now() // Dùng cho logic dọn dẹp
                 });
-                bsStatus.innerHTML = `Đã tạo phòng. ID phòng: <strong>${newLobbyId}</strong>. Đang chờ người chơi 2 tham gia...`;
+                bsStatus.innerHTML = `Đã tạo phòng. ID: <strong>${lobbyId}</strong>. Bạn là P1. Đang chờ đối thủ...`;
             }
             
             // Lắng nghe trạng thái phòng chơi
@@ -1710,47 +1846,64 @@
                 if (docSnapshot.exists()) {
                     const state = docSnapshot.data();
                     
-                    // Cập nhật Opponent ID nếu có
+                    // Xác định Player ID của đối thủ
                     opponentPlayerId = myPlayerId === state.player1Id ? state.player2Id : state.player1Id;
                     
-                    // Xử lý đòn tấn công mới
-                    if (state.lastAttack && JSON.parse(state.lastAttack).attackerId === opponentPlayerId) {
-                        const { r, c } = JSON.parse(state.lastAttack);
+                    // Xử lý đòn tấn công mới (nếu tấn công đến từ đối thủ)
+                    if (state.lastAttack) {
+                        const attackData = JSON.parse(state.lastAttack);
                         
-                        // Đây là Player bị tấn công, cập nhật hits của mình
-                        const shipBoardToUse = myPlayerId === state.player1Id ? state.player1ShipBoard : state.player2ShipBoard;
-                        const shipBoard2D = shipBoardToUse.split(';').map(row => row.split(',').map(v => v === 'true'));
-                        
-                        const isHit = shipBoard2D[r][c];
-                        const hitStatus = isHit ? 'hit' : 'miss';
-                        
-                        // Cập nhật hits của mình (ví dụ hitsP1 là hits mà P2 bắn vào P1)
-                        const myHitsField = myPlayerId === state.player1Id ? 'hitsP2' : 'hitsP1'; 
-                        
-                        // Lấy mảng hits hiện tại của mình từ Cloud
-                        let currentMyHits = JSON.parse(state[myHitsField]).map(row => row.split(','));
-                        currentMyHits[r][c] = hitStatus;
-                        const newMyHitsFlat = currentMyHits.map(row => row.join(',')).join(';');
-                        
-                        // Kiểm tra kết thúc game
-                        const shipsRemaining = Utils.countShipsLeft(shipBoard2D, currentMyHits);
-                        let gameOverUpdate = {};
-                        if (shipsRemaining <= 0) {
-                            gameOverUpdate = {
-                                isOver: true,
-                                winnerId: opponentPlayerId,
-                                winnerName: myPlayerId === state.player1Id ? state.player2Name : state.player1Name,
+                        if (attackData.attackerId === opponentPlayerId && state.turn === myPlayerId) {
+                             const { r, c } = attackData;
+                            
+                            // Đây là Player bị tấn công, cập nhật hits của mình
+                            const myShipBoardFlat = myPlayerId === state.player1Id ? state.player1ShipBoard : state.player2ShipBoard;
+                            // FIXED: Sửa cách parse board 1D string thành 2D array (Ship Board)
+                            const myShipBoard2D = myShipBoardFlat.split(';').map(row => row.split(',').map(v => v === 'true'));
+                            
+                            const isHit = myShipBoard2D[r][c];
+                            const hitStatus = isHit ? 'hit' : 'miss';
+                            
+                            // Cập nhật hits của mình (ví dụ hitsP2 là hits mà P1 bắn vào P2)
+                            const myHitsField = myPlayerId === state.player1Id ? 'hitsP2' : 'hitsP1'; 
+                            
+                            // Lấy mảng hits hiện tại của mình từ Cloud
+                            // FIXED: Sửa cách parse board 1D string thành 2D array (Hit Board)
+                            let currentMyHits = state[myHitsField].split(';').map(row => row.split(',').map(v => v === 'null' ? null : v));
+                            currentMyHits[r][c] = hitStatus;
+                            
+                            // Hàm chuyển board 2D array sang chuỗi để lưu Firestore
+                            const boardToFirestore = (board2D, hitBoard2D) => {
+                                const flatShip = board2D.map(row => row.join(',')).join(';');
+                                const flatHit = hitBoard2D.map(row => row.map(v => v || 'null').join(',')).join(';');
+                                return { flatShip, flatHit };
                             };
-                            showAlert(`Thuyền của bạn đã bị tiêu diệt hết! ${gameOverUpdate.winnerName} thắng!`, () => pushScore(APP.playerName, 0, 'battleship'));
-                            pushScore(APP.playerName, 0, 'battleship');
-                        }
 
-                        // Ghi lại kết quả bắn
-                        await updateDoc(pvpGameRef, {
-                            [myHitsField]: newMyHitsFlat,
-                            lastAttack: null, // Xóa tấn công cũ
-                            ...gameOverUpdate
-                        });
+                            const { flatHit: newMyHitsFlat } = boardToFirestore(myShipBoard, currentMyHits);
+                            
+                            // Kiểm tra kết thúc game
+                            const shipsRemaining = Utils.countShipsLeft(myShipBoard2D, currentMyHits);
+                            let gameOverUpdate = {};
+                            
+                            if (shipsRemaining <= 0) {
+                                gameOverUpdate = {
+                                    isOver: true,
+                                    winnerId: opponentPlayerId,
+                                    winnerName: myPlayerId === state.player1Id ? state.player2Name : state.player1Name,
+                                };
+                                showAlert(`Thuyền của bạn đã bị tiêu diệt hết! ${gameOverUpdate.winnerName} thắng!`, () => {
+                                    pushScore(APP.playerName, 0, 'battleship');
+                                    closeGame();
+                                });
+                            }
+
+                            // Ghi lại kết quả bắn và chuyển lượt lại cho đối thủ
+                            await updateDoc(pvpGameRef, {
+                                [myHitsField]: newMyHitsFlat,
+                                lastAttack: null, // Xóa tấn công cũ
+                                ...gameOverUpdate
+                            });
+                        }
                     }
                     
                     // Cập nhật UI
@@ -1758,11 +1911,22 @@
                 } else {
                     showAlert('Phòng không tồn tại.', () => closeGame());
                 }
+            }, (error) => {
+                 console.error("Firebase Battleship snapshot error:", error);
+                 showAlert('Lỗi kết nối PvP. (Kiểm tra Rules)', () => closeGame());
             });
         }
         
         setupPvp();
-        window.GAME = { destroy: () => { if(unsubscribe) unsubscribe(); } };
+        window.GAME = { 
+            destroy: () => { 
+                if(unsubscribe) unsubscribe(); 
+                // Logic dọn dẹp phòng trống (chỉ người tạo phòng mới làm)
+                if(pvpGameRef && myPlayerId === auth.currentUser.uid && !state.player2Id) {
+                    deleteDoc(pvpGameRef).catch(e => console.error("Lỗi xóa phòng trống:", e));
+                }
+            } 
+        };
     }
 
 
