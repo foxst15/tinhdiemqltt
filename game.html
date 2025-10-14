@@ -13,8 +13,8 @@
   - ADDED: Battleship (Hải Chiến) now supports both AI (Single Player) and PvP.
   - UPGRADED: Tic-Tac-Toe supports MULTIPLE GRID SIZES (3x3, 6x6, 8x8, 10x10).
   - MODIFIED: Quiz now shows 6 shuffled questions.
-  - FIX (CRITICAL): PvP auto-matching logic is now more robust, preventing players from getting stuck in their own lobbies.
-  - FIX: Game logic and UI rendering issues across various games.
+  - FIX (CRITICAL): Added guardrail to Tic-Tac-Toe PvP to prevent 'undefined' turn error on updateDoc.
+  - FIX: PvP auto-matching logic is now more robust, preventing players from getting stuck in their own lobbies.
 -->
 <style>
   @keyframes background-pan {
@@ -1418,15 +1418,23 @@
                 render();
                 if(!checkEndState(false)) setTimeout(aiMove, 500);
             } else if (mode === 'pvp' && pvpGameRef && auth.currentUser.uid === pvpState.turn) {
-                 // Logic PvP
+                 // FIX: Add a guardrail to prevent moves before both players are in the lobby.
+                if (!pvpState.player1Id || !pvpState.player2Id) {
+                    infoEl.textContent = 'Đang chờ người chơi thứ 2 tham gia...';
+                    return;
+                }
+                
+                // Logic PvP
                  const playerMark = auth.currentUser.uid === pvpState.player1Id ? 'X' : 'O';
                  board[index] = playerMark;
                  render(); // Cập nhật local ngay lập tức
                  
+                 const nextTurnId = (auth.currentUser.uid === pvpState.player1Id) ? pvpState.player2Id : pvpState.player1Id;
+
                  // Đẩy lên Cloud
                  updateDoc(pvpGameRef, { 
                     board: JSON.stringify(board), 
-                    turn: auth.currentUser.uid === pvpState.player1Id ? pvpState.player2Id : pvpState.player1Id 
+                    turn: nextTurnId
                  });
                  checkEndState(true);
             }
@@ -1589,6 +1597,10 @@
         window.GAME = { 
             destroy: () => { 
                 if(unsubscribe) unsubscribe();
+                // FIX: Add cleanup for abandoned TTT lobbies
+                if (mode === 'pvp' && pvpGameRef && pvpState.player1Id === auth.currentUser.uid && !pvpState.player2Id) {
+                    deleteDoc(pvpGameRef).catch(e => console.error("Lỗi xóa phòng TTT trống:", e));
+                }
             } 
         };
     }
@@ -2029,3 +2041,5 @@
 <script src="/_vercel/speed-insights/script.js"></script>
 </body>
 </html>
+
+
