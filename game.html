@@ -21,6 +21,7 @@
   - FIX (CRITICAL): CSS grid issues for Memory and 2048 (display was vertical).
   - FIX (CRITICAL): PvP: Implemented automatic lobby matching (no more manual ID entry).
   - FIX: Tic-Tac-Toe UI is fixed with inline CSS.
+  - FIX (CRITICAL): Battleship updateDoc error due to undefined player2Id/opponentPlayerId.
 -->
 <style>
   @keyframes background-pan {
@@ -1632,7 +1633,8 @@
         let myShipBoard = Utils.placeShipsRandomly();
         let myHitBoard = Array(10).fill(0).map(() => Array(10).fill(null)); // null, 'hit', 'miss'
         let opponentHitBoard = Array(10).fill(0).map(() => Array(10).fill(null)); 
-        let myPlayerId, opponentPlayerId;
+        let myPlayerId = auth.currentUser.uid; // Khởi tạo ngay lập tức
+        let opponentPlayerId = null; // Khởi tạo
         
         const root = document.createElement('div');
         root.innerHTML = `
@@ -1664,6 +1666,9 @@
             const isReady = state.player1ShipBoard && state.player2ShipBoard;
             const isMyTurn = state.turn === myPlayerId;
             const isHost = myPlayerId === state.player1Id;
+            
+            // FIXED: Cập nhật opponentPlayerId từ state
+            opponentPlayerId = myPlayerId === state.player1Id ? state.player2Id : state.player1Id;
 
             if (isReady && !state.isOver) {
                 bsStatus.textContent = isMyTurn ? 'LƯỢT CỦA BẠN: Tấn công!' : 'Đang chờ đối thủ...';
@@ -1772,21 +1777,26 @@
             const availableLobbies = await getDocs(q);
             
             let lobbyId;
-            let isJoining = false;
+            
+            // Đảm bảo myPlayerId được khởi tạo
+            myPlayerId = auth.currentUser.uid;
+            
+            // Khởi tạo opponentPlayerId là null để tránh lỗi updateDoc
+            opponentPlayerId = null;
 
             if (!availableLobbies.empty) {
                 // TÌM THẤY phòng đang chờ
                 const lobbyDoc = availableLobbies.docs[0];
                 lobbyId = lobbyDoc.id;
                 
-                if (lobbyDoc.data().player1Id === auth.currentUser.uid) {
+                if (lobbyDoc.data().player1Id === myPlayerId) {
                     // Nếu chính mình tạo phòng này, chờ người khác vào
                     pvpGameRef = doc(gameCollection, lobbyId);
                     bsStatus.innerHTML = `Đã tạo phòng. ID: <strong>${lobbyId}</strong>. Bạn là P1. Đang chờ đối thủ...`;
+                    opponentPlayerId = null; // Vẫn là null cho đến khi Player 2 tham gia
                 } else {
                     // Tham gia phòng
                     pvpGameRef = doc(gameCollection, lobbyId);
-                    isJoining = true;
                     
                     opponentPlayerId = lobbyDoc.data().player1Id;
                     
@@ -1798,6 +1808,7 @@
                     
                     const { flatShip: flatShipBoard, flatHit: flatHitBoard } = boardToFirestore(myShipBoard, myHitBoard);
                     
+                    // FIXED: Gửi myPlayerId cho player2Id (đã được khởi tạo)
                     await updateDoc(pvpGameRef, { 
                         player2Id: myPlayerId, 
                         player2Name: APP.playerName,
@@ -1825,7 +1836,7 @@
                     gameId: lobbyId,
                     player1Id: myPlayerId,
                     player1Name: APP.playerName,
-                    player2Id: null,
+                    player2Id: null, // Khởi tạo rõ ràng là null
                     player2Name: null,
                     player1ShipBoard: flatShipBoard,
                     player2ShipBoard: null, 
@@ -1836,7 +1847,7 @@
                     isOver: false,
                     winnerId: null,
                     winnerName: null,
-                    createdAt: Date.now() // Dùng cho logic dọn dẹp
+                    createdAt: Date.now()
                 });
                 bsStatus.innerHTML = `Đã tạo phòng. ID: <strong>${lobbyId}</strong>. Bạn là P1. Đang chờ đối thủ...`;
             }
@@ -1846,9 +1857,9 @@
                 if (docSnapshot.exists()) {
                     const state = docSnapshot.data();
                     
-                    // Xác định Player ID của đối thủ
+                    // FIXED: Cập nhật opponentPlayerId từ state
                     opponentPlayerId = myPlayerId === state.player1Id ? state.player2Id : state.player1Id;
-                    
+
                     // Xử lý đòn tấn công mới (nếu tấn công đến từ đối thủ)
                     if (state.lastAttack) {
                         const attackData = JSON.parse(state.lastAttack);
@@ -1922,7 +1933,7 @@
             destroy: () => { 
                 if(unsubscribe) unsubscribe(); 
                 // Logic dọn dẹp phòng trống (chỉ người tạo phòng mới làm)
-                if(pvpGameRef && myPlayerId === auth.currentUser.uid && !state.player2Id) {
+                if(pvpGameRef && myPlayerId === auth.currentUser.uid && !opponentPlayerId) {
                     deleteDoc(pvpGameRef).catch(e => console.error("Lỗi xóa phòng trống:", e));
                 }
             } 
