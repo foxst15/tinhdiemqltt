@@ -4,24 +4,18 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
  <link rel="icon" type="image/png" href="https://uploads.onecompiler.io/43u4wb3ft/43unfu266/Black%20and%20White%20Circle%20Class%20Logo.png">
-<title>Student Game Hub — Nâng cấp (Gemini LLM)</title>
+<title>Student Game Hub </title>
 <!--
   Student Game Hub - Enhanced Edition
-  - UPGRADED: Leaderboard is now 100% ONLINE with Firebase Firestore.
-  - UPGRADED: Leaderboard is now segmented by GAME ID and DIFFICULTY.
-  - ADDED: NEW GAME: Battleship (Hải Chiến) with PvP.
-  - ADDED: PvP/AI Toggle for all games.
-  - MODIFIED: Quiz now shows 6 shuffled questions (random subset of 50).
-  - IMPROVED: Mobile-first UI/UX optimization for better touch and screen responsiveness.
-  - ADDED: Gemini LLM feature: Creative Player Name Generator (one suggestion only).
-  - ADDED: Gemini LLM feature: Quiz Explanation Assistant (in-game modal).
-  - REMOVED: Local storage save/load for player name.
-  - FIX: Flappy logic fixed.
-  - FIX: Memory and 2048 initialization and play logic corrected.
-  - FIX (CRITICAL): CSS grid issues for Memory and 2048 (display was vertical).
-  - FIX (CRITICAL): PvP: Implemented automatic lobby matching (no more manual ID entry).
-  - FIX: Tic-Tac-Toe UI is fixed with inline CSS.
-  - FIX (CRITICAL): Battleship updateDoc error due to undefined player2Id/opponentPlayerId.
+  - RE-ADDED: Local storage for player name is back for user convenience.
+  - REMOVED: All Gemini LLM features.
+  - UPGRADED: Leaderboard is now 100% ONLINE with Firebase Firestore (segmented by Game/Difficulty).
+  - ADDED: Battleship (Hải Chiến) now supports both AI (Single Player) and PvP.
+  - UPGRADED: Tic-Tac-Toe supports MULTIPLE GRID SIZES (3x3, 6x6, 8x8, 10x10).
+  - MODIFIED: Quiz now shows 6 shuffled questions.
+  - FIX (CRITICAL): PvP auto-matching logic and various game UI rendering issues.
+  - FIX (CRITICAL): ReferenceError: currentPlayer is not defined in Battleship AI mode.
+  - FIX (CRITICAL): Removed lobby deletion on exit to prevent Firebase permission errors.
 -->
 <style>
   @keyframes background-pan {
@@ -164,9 +158,8 @@
   .footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;color:var(--muted);font-size:13px}
   
   /* Game Specific Styles (Responsive) */
-  /* TTT CSS được chuyển vào JS để dễ điều khiển hơn trên mobile */
-  .tictactoe-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 300px; }
-  .ttt-cell { width: 100%; height: 100%; aspect-ratio: 1 / 1; font-size: 2.5em;}
+  /* TTT CSS (Được định nghĩa lại trong JS để hỗ trợ nhiều kích thước grid) */
+  .ttt-cell { width: 100%; height: 100%; aspect-ratio: 1 / 1; font-size: 2.5em;} 
 
   /* FIXED: 2048 Grid CSS */
   .board2048 { 
@@ -257,7 +250,6 @@
     /* Đưa các nút và input của player về dạng cột trên mobile */
     .player-input-card input[type="text"] { width: 100%; min-width: auto; order: 1; }
     .player-input-card .controls { order: 2; width: 100%; justify-content: space-between; gap: 8px;}
-    .player-input-card #btnSuggestName { order: 3; width: 100%; }
     .player-input-card .control-row { order: 4; margin-top: 10px; width: 100%; display: flex; align-items: center; justify-content: space-between;}
     .player-input-card .control-row label { flex-shrink: 0; }
     .player-input-card .control-row select { width: 60%; }
@@ -279,20 +271,9 @@
   .g8 { background: linear-gradient(135deg, rgba(0, 190, 190, 0.2), rgba(125, 249, 255, 0.15)); border-color: rgba(125, 249, 255, 0.3); } /* Battleship - Cyan */
 
   .center{text-align:center}
-  /* Style cho Gemini LLM Explanation */
+  /* Style cho Gemini LLM Explanation (Đã loại bỏ nhưng giữ lại .gemini-explanation để tránh lỗi nếu có) */
   .gemini-explanation {
-      max-width: 600px;
-      padding: 15px;
-      background: #0f172a;
-      border-radius: 10px;
-      margin-top: 15px;
-      text-align: left;
-      font-size: 0.9em;
-  }
-  .gemini-explanation h4 {
-      margin-top: 0;
-      color: var(--accent2);
-      font-size: 1.1em;
+      display: none; /* Ẩn hoàn toàn */
   }
 </style>
 
@@ -306,7 +287,7 @@
   <header>
     <div class="logo">GAME</div>
     <div>
-      <h1>Student Game Hub — Nâng cấp (Cloud)</h1>
+      <h1>Student Game Hub </h1>
       <p class="lead">Giao diện mới, hiệu ứng sống động và bảng xếp hạng đồng bộ Đám mây.</p>
     </div>
     <div class="top-right">
@@ -325,8 +306,7 @@
           <button class="btn" id="btnStart">Lưu tên & Bắt đầu</button>
           <button class="ghost" id="btnClear">Xóa tên</button>
         </div>
-        <!-- Thêm nút Gợi ý Tên sử dụng Gemini API -->
-        <button class="ghost" id="btnSuggestName">✨ Gợi ý Tên</button>
+        <!-- Nút Gợi ý Tên đã được loại bỏ -->
         <div class="control-row">
           <label class="small muted">Theme</label>
           <select id="themeSelect" class="select">
@@ -417,9 +397,16 @@
         <div class="game-card g5 card">
           <div>
             <div class="title">Tic-Tac-Toe</div>
-            <div class="desc">Cờ caro 3x3.</div>
+            <div class="desc">Cờ caro 3x3 đến 10x10.</div>
           </div>
           <div class="actions">
+            <!-- Thêm Select Box chọn kích thước bàn cờ -->
+            <select class="select" id="tictactoeSize">
+              <option value="3">3x3 (Cổ điển)</option>
+              <option value="6">6x6</option>
+              <option value="8">8x8</option>
+              <option value="10">10x10</option>
+            </select>
             <select class="select" id="tictactoeMode">
               <option value="ai">Chơi AI</option>
               <option value="pvp">Chơi PvP</option>
@@ -431,10 +418,14 @@
         <div class="game-card g8 card">
           <div>
             <div class="title">Hải Chiến</div>
-            <div class="desc">Sắp xếp đội hình, bắn thuyền đối thủ. (PvP)</div>
+            <div class="desc">Sắp xếp đội hình, bắn thuyền đối thủ.</div>
           </div>
           <div class="actions">
-            <button class="btn play-btn" data-game="battleship" data-mode="pvp">Chơi PvP</button>
+            <select class="select" id="battleshipMode">
+              <option value="ai">Chơi AI</option>
+              <option value="pvp">Chơi PvP</option>
+            </select>
+            <button class="btn play-btn" data-game="battleship" data-mode="dynamic">Chơi</button>
           </div>
         </div>
       </div>
@@ -513,8 +504,7 @@
       <div style="font-weight:800" id="modalTitle">Game</div>
       <div class="muted small" id="modalSubtitle">—</div>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-        <!-- Thêm Loading spinner cho Gemini -->
-        <div id="geminiLoading" style="display:none; color: var(--accent3);">Đang xử lý...</div>
+        <!-- Đã loại bỏ Loading spinner cho Gemini -->
         <button class="ghost" id="btnMute">Tắt nhạc</button>
         <button class="ghost" id="btnExit">Thoát</button>
       </div>
@@ -557,8 +547,6 @@
   let db;
   let auth;
   let firebaseActive = false;
-  // Lưu trữ các câu hỏi Quiz cho Gemini
-  let quizQuestionsHistory = [];
 
   try {
     const app = initializeApp(firebaseConfig);
@@ -569,11 +557,6 @@
     console.error("Firebase initialization failed:", e);
     document.getElementById('leaderboardStatus').textContent = 'Cloud bị lỗi.';
   }
-
-    // --- Gemini API Functionality ---
-    const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=";
-    const GEMINI_API_KEY = "";
-    
 
   (function() {
     "use strict";
@@ -668,8 +651,9 @@
       // Hàm Battleship: Đếm số lượng ô thuyền còn lại
       countShipsLeft: (shipBoard, hitBoard) => {
           let hits = 0;
-          for(let r=0; r<10; r++) {
-              for(let c=0; c<10; c++) {
+          const gridSize = 10;
+          for(let r=0; r<gridSize; r++) {
+              for(let c=0; c<gridSize; c++) {
                   // shipBoard là mảng 2D Boolean, hitBoard là mảng 2D string
                   if(shipBoard[r][c] && hitBoard[r][c] === 'hit') {
                       hits++;
@@ -679,91 +663,6 @@
           return 17 - hits; // 17 là tổng số ô của các thuyền [5, 4, 3, 3, 2]
       }
     };
-
-
-    // --- Gemini API Functions ---
-    // Hàm gọi API với exponential backoff
-    async function callGeminiApi(payload, maxRetries = 5) {
-        // Sử dụng document.getElementById trực tiếp vì nó là global
-        document.getElementById('geminiLoading').style.display = 'block'; 
-        
-        for (let i = 0; i < maxRetries; i++) {
-            try {
-                const response = await fetch(GEMINI_API_URL + GEMINI_API_KEY, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (response.ok) {
-                    const result = await response.json();
-                    document.getElementById('geminiLoading').style.display = 'none';
-                    return result.candidates?.[0]?.content?.parts?.[0]?.text || "Không nhận được phản hồi từ AI.";
-                } else if (response.status === 429) {
-                    // Too Many Requests, retry with exponential backoff
-                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
-                    console.warn(`429 rate limit hit. Retrying in ${delay / 1000}s...`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                } else {
-                    // Non-retryable error
-                    const errorBody = await response.text();
-                    console.error(`Gemini API Error (Status: ${response.status}): ${errorBody}`);
-                    document.getElementById('geminiLoading').style.display = 'none';
-                    return `Lỗi API: ${response.status}.`;
-                }
-            } catch (error) {
-                console.error("Fetch error:", error);
-                document.getElementById('geminiLoading').style.display = 'none';
-                return "Lỗi kết nối mạng.";
-            }
-        }
-        document.getElementById('geminiLoading').style.display = 'none';
-        return "Lỗi: Đã thử lại nhiều lần nhưng không thành công.";
-    }
-
-    async function generatePlayerName() {
-        const prompt = "Hãy gợi ý một tên người chơi Việt Nam (khoảng 2-3 từ) ngầu, hài hước, hoặc độc đáo cho trò chơi trực tuyến. Chỉ trả về một TÊN GỢI Ý DUY NHẤT (không có lời giới thiệu hay dấu câu).";
-        
-        const payload = {
-            contents: [{ parts: [{ text: prompt }] }],
-            systemInstruction: { parts: [{ text: "Act as a helpful, creative Vietnamese name generator. Generate ONE name only." }] },
-        };
-
-        const resultText = await callGeminiApi(payload);
-        
-        if (resultText && !resultText.startsWith("Lỗi")) {
-            const nameLines = resultText.trim().split('\n').filter(line => line.trim().length > 0);
-            const cleanName = nameLines.length > 0 ? nameLines[0].trim().replace(/^['"]|['"]$/g, '') : "Người chơi";
-            
-            playerInput.value = cleanName;
-            // Tự động lưu tên vừa được gợi ý (Không lưu cục bộ, chỉ cập nhật UI)
-            const v = cleanName;
-            if(v){
-                APP.playerName = v;
-                playerDisplay.textContent = v;
-                modalPlayer.textContent = v;
-                showAlert('Đã tạo tên: ' + v + '!');
-            }
-        } else {
-            showAlert('Lỗi khi gợi ý tên: ' + resultText);
-        }
-    }
-
-    async function generateQuizExplanation(questions) {
-        const prompt = "Dựa trên danh sách câu hỏi và đáp án sau đây, hãy viết một lời giải thích ngắn gọn, súc tích (tối đa 2 câu) cho mỗi câu trả lời đúng. Format: 'Q1: [Giải thích]. Q2: [Giải thích]. ...'\n\n" + 
-                       questions.map((q, i) => `Q${i+1}: Câu hỏi: ${q.q}, Đáp án đúng: ${q.a}`).join('\n');
-
-        const payload = {
-            contents: [{ parts: [{ text: prompt }] }],
-            // Sử dụng Google Search grounding để đảm bảo kiến thức chính xác
-            tools: [{ "google_search": {} }], 
-            systemInstruction: { parts: [{ text: "Act as a concise and knowledgeable Vietnamese tutor. Provide only the explanations." }] },
-        };
-        
-        const resultText = await callGeminiApi(payload);
-        
-        return resultText;
-    }
 
 
     // --- UI/Modal Management ---
@@ -907,8 +806,8 @@
             clickspeed: getEl('clickDuration').value,
             snake: getEl('snakeDifficulty').value,
             flappy: getEl('flappyDifficulty').value,
-            tictactoe: getEl('tictactoeMode').value, // 'ai' hoặc 'pvp'
-            battleship: 'pvp', // Battleship luôn là PvP
+            tictactoe: getEl('tictactoeSize').value, // LƯU KÍCH THƯỚC BÀN CỜ LÀM DIFFICULTY
+            battleship: getEl('battleshipMode').value, // LƯU MODE LÀM DIFFICULTY
             '2048': 'default', 
         };
         return diffMap[gameId] || 'default';
@@ -947,7 +846,7 @@
       return ({quiz:'Quiz Nhanh', memory:'Memory - Ghép đôi', clickspeed:'Click Speed', snake:'Snake', flappy:'Flappy mini', '2048':'2048', tictactoe: 'Tic-Tac-Toe', battleship: 'Hải Chiến'}[id]||id);
     }
     function gameSubtitle(id){
-      return ({quiz:'Trả lời nhanh — có timer', memory:'Tìm cặp — ít lượt = nhiều điểm', clickspeed:'Nhấp nhiều nhất trong thời gian', snake:'Rắn săn mồi', flappy:'Nhấn để bay', '2048':'Gộp số để đạt 2048', tictactoe: 'Cờ caro 3x3', battleship: 'Sắp xếp và tấn công'}[id]||'');
+      return ({quiz:'Trả lời nhanh — có timer', memory:'Tìm cặp — ít lượt = nhiều điểm', clickspeed:'Nhấp nhiều nhất trong thời gian', snake:'Rắn săn mồi', flappy:'Nhấn để bay', '2048':'Gộp số để đạt 2048', tictactoe: 'Cờ caro Multi-Grid', battleship: 'Sắp xếp và tấn công'}[id]||'');
     }
 
     async function pushScore(name, score, gameId){
@@ -984,17 +883,17 @@
           APP.playerName = v;
           playerDisplay.textContent = v;
           modalPlayer.textContent = v;
-          // Loại bỏ lưu cục bộ: localStorage.setItem('sg_hub_player_name', v);
+          // KHÔI PHỤC: Lưu tên người chơi cục bộ
+          localStorage.setItem('sg_hub_player_name', v);
           showAlert('Tên đã lưu: ' + v);
         });
         btnClear.addEventListener('click', ()=>{ 
           playerInput.value = ''; 
-          // Loại bỏ xóa cục bộ: localStorage.removeItem('sg_hub_player_name'); 
+          // KHÔI PHỤC: Xóa tên người chơi cục bộ
+          localStorage.removeItem('sg_hub_player_name');
           APP.playerName = null; 
           playerDisplay.textContent = '— chưa đăng nhập —'; 
         });
-
-        getEl('btnSuggestName').addEventListener('click', generatePlayerName);
 
         themeSelect.addEventListener('change', (e)=>{ APP.settings.theme = e.target.value; applyTheme(); });
         musicToggle.addEventListener('change', (e)=>{ APP.settings.music = e.target.value !== 'off'; });
@@ -1009,8 +908,11 @@
               let mode = e.currentTarget.dataset.mode;
               
               if (mode === 'dynamic') {
-                  // Lấy mode từ select box nếu là dynamic (như tictactoe)
-                  mode = getEl(gameId + 'Mode').value;
+                  // Lấy mode từ select box nếu là dynamic (như tictactoe, battleship)
+                  const modeEl = getEl(gameId + 'Mode');
+                  if (modeEl) {
+                      mode = modeEl.value;
+                  }
               }
               if(gameId) openGame(gameId, mode);
           });
@@ -1091,7 +993,7 @@
         // --- End 50 Câu hỏi Quiz ---
 
         // Xáo trộn và chỉ lấy 6 câu
-        quizQuestionsHistory = Utils.shuffleArray(allQuestions).slice(0, NUM_QUESTIONS);
+        const qs = Utils.shuffleArray(allQuestions).slice(0, NUM_QUESTIONS);
 
         let idx=0, score=0, timeLeft=timePerQuestion;
         
@@ -1103,8 +1005,8 @@
 
         function renderQuestion(){
           const qWrap = root.querySelector('#qWrap'); qWrap.innerHTML = '';
-          if(idx>=quizQuestionsHistory.length){ finishQuiz(); return; }
-          const item = quizQuestionsHistory[idx];
+          if(idx>=qs.length){ finishQuiz(); return; }
+          const item = qs[idx];
           const qDiv = document.createElement('div');
           qDiv.innerHTML = `<div style="font-weight:700;margin-bottom:10px; font-size: 1.1em;">Q${idx+1} (${idx+1}/${NUM_QUESTIONS}). ${item.q}</div><div style="display:flex; flex-wrap: wrap; gap: 8px;"></div>`;
           const optionsDiv = qDiv.querySelector('div:last-child');
@@ -1135,7 +1037,7 @@
             if(timeLeft<=0){ 
                 idx++; 
                 timeLeft=timePerQuestion; 
-                if(idx>=quizQuestionsHistory.length) finishQuiz(); 
+                if(idx>=qs.length) finishQuiz(); 
                 else renderQuestion(); 
             } 
         }, 1000);
@@ -1145,20 +1047,11 @@
         async function finishQuiz(){
           clearInterval(timer);
           
-          // Sau khi hoàn thành, thêm nút Trợ lý Giải thích
-          const explanationText = await generateQuizExplanation(quizQuestionsHistory);
-
           const resultContent = `
               <div style="text-align:center; width: 100%;">
                   <h3 style="color: var(--accent1);">Quiz kết thúc!</h3>
                   <p style="font-size: 1.5em; font-weight: bold;">Điểm của bạn: ${score}</p>
-                  <button class="btn" onclick="document.getElementById('quizExplanation').style.display='block'; this.style.display='none';">
-                      ✨ Xem giải thích của AI
-                  </button>
-                  <div id="quizExplanation" class="gemini-explanation" style="display:none; width: 100%; max-width: none;">
-                      <h4>Trợ lý Giải thích Gemini</h4>
-                      <p>${explanationText.replace(/\n/g, '<br>')}</p>
-                  </div>
+                  <!-- Loại bỏ nút giải thích AI -->
               </div>
           `;
           
@@ -1403,16 +1296,25 @@
     
     // --- 7) Tic-Tac-Toe Implementation ---
     function initTicTacToe(container, mode) {
-        let board = Array(9).fill(null);
+        const size = parseInt(getEl('tictactoeSize').value, 10);
+        const boardSize = size * size;
+        const WIN_CONDITION = 3; // Thắng khi 3 ô liên tiếp (đơn giản hóa)
+        let board = Array(boardSize).fill(null);
         let currentPlayer = 'X';
         let gameOver = false;
         let pvpGameRef = null;
         let unsubscribe = null;
         
         const boardEl = document.createElement('div');
-        // FIXED: Apply inline style for TTT board to ensure grid works on all screens
-        boardEl.style.cssText = 'display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 300px; margin: 15px auto;';
-
+        // FIXED: Apply CSS directly using parameters for multi-grid support
+        boardEl.style.cssText = `
+            display: grid; 
+            grid-template-columns: repeat(${size}, 1fr); 
+            gap: ${size > 6 ? '4px' : '8px'}; 
+            max-width: ${size * 50}px; 
+            margin: 15px auto;
+            width: 100%;
+        `;
         container.appendChild(boardEl);
         
         const infoEl = document.createElement('div');
@@ -1421,15 +1323,66 @@
         infoEl.style.textAlign = 'center';
         container.appendChild(infoEl);
         
-        let pvpState = {}; // Khai báo pvpState ở scope ngoài
+        let pvpState = {}; 
 
 
         function checkWinner() {
-            const lines = [ [0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6] ];
-            for (let line of lines) {
-                const [a, b, c] = line;
-                if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
+            // Kiểm tra chiến thắng (3 ô liên tiếp, hoặc 4 ô nếu game lớn hơn)
+            const winLength = WIN_CONDITION; // Giữ 3 ô liên tiếp cho tất cả các kích thước
+            
+            // 1. Kiểm tra hàng ngang (rows)
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c <= size - winLength; c++) {
+                    const mark = board[r * size + c];
+                    if (mark === null) continue;
+                    let count = 0;
+                    for (let k = 0; k < winLength; k++) {
+                        if (board[r * size + c + k] === mark) count++;
+                    }
+                    if (count === winLength) return mark;
+                }
             }
+            
+            // 2. Kiểm tra hàng dọc (columns)
+            for (let c = 0; c < size; c++) {
+                for (let r = 0; r <= size - winLength; r++) {
+                    const mark = board[r * size + c];
+                    if (mark === null) continue;
+                    let count = 0;
+                    for (let k = 0; k < winLength; k++) {
+                        if (board[(r + k) * size + c] === mark) count++;
+                    }
+                    if (count === winLength) return mark;
+                }
+            }
+
+            // 3. Kiểm tra đường chéo chính (\)
+            for (let r = 0; r <= size - winLength; r++) {
+                for (let c = 0; c <= size - winLength; c++) {
+                    const mark = board[r * size + c];
+                    if (mark === null) continue;
+                    let count = 0;
+                    for (let k = 0; k < winLength; k++) {
+                        if (board[(r + k) * size + c + k] === mark) count++;
+                    }
+                    if (count === winLength) return mark;
+                }
+            }
+            
+            // 4. Kiểm tra đường chéo phụ (/)
+            for (let r = 0; r <= size - winLength; r++) {
+                for (let c = winLength - 1; c < size; c++) {
+                    const mark = board[r * size + c];
+                    if (mark === null) continue;
+                    let count = 0;
+                    for (let k = 0; k < winLength; k++) {
+                        if (board[(r + k) * size + c - k] === mark) count++;
+                    }
+                    if (count === winLength) return mark;
+                }
+            }
+
+            // Hòa
             return board.includes(null) ? null : 'Tie';
         }
         
@@ -1441,8 +1394,9 @@
                 infoEl.textContent = message;
                 
                 if (!isPvp) {
+                    const score = winner === 'X' ? 100 : (winner === 'Tie' ? 10 : 0);
                     showAlert(message, () => {
-                        pushScore(APP.playerName, winner === 'X' ? 100 : (winner === 'Tie' ? 10 : 0), 'tictactoe');
+                        pushScore(APP.playerName, score, 'tictactoe');
                         closeGame();
                     });
                 } else if (pvpGameRef) {
@@ -1511,10 +1465,22 @@
             
             board.forEach((cell, index) => {
                 const cellEl = document.createElement('div');
-                // FIXED: Apply inline style for TTT cell to ensure correct size/aspect ratio
-                cellEl.style.cssText = 'width: 100%; aspect-ratio: 1 / 1; background-color: rgba(0,0,0,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 2.5em; font-weight: bold; cursor: pointer; transition: background-color 0.2s;';
+                // FIXED: Apply dynamic style for TTT cell based on size
+                cellEl.style.cssText = `
+                    width: 100%; 
+                    aspect-ratio: 1 / 1; 
+                    background-color: rgba(0,0,0,0.2); 
+                    border-radius: ${size > 3 ? '4px' : '10px'}; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    font-size: ${size >= 8 ? '1.5em' : '2.5em'};
+                    font-weight: bold; 
+                    cursor: pointer; 
+                    transition: background-color 0.2s;
+                    color: ${cell === 'X' ? 'var(--accent1)' : 'var(--accent2)'};
+                `;
                 cellEl.textContent = cell;
-                cellEl.style.color = cell === 'X' ? 'var(--accent1)' : 'var(--accent2)';
                 
                 if (mode === 'pvp') {
                      // Nếu PvP: Chỉ click được khi đến lượt mình và ô trống
@@ -1534,11 +1500,11 @@
             const gameCollection = collection(db, "tictactoe_lobbies");
             
             // --- Logic Tự động Ghép phòng ---
-            const q = query(gameCollection, where("player2Id", "==", null), limit(1));
+            // Thêm lọc theo kích thước bàn cờ
+            const q = query(gameCollection, where("player2Id", "==", null), where("size", "==", size), limit(1));
             const availableLobbies = await getDocs(q);
             
             let lobbyId;
-            let isJoining = false;
             
             if (!availableLobbies.empty) {
                 // TÌM THẤY phòng đang chờ
@@ -1548,17 +1514,16 @@
                 if (lobbyDoc.data().player1Id === auth.currentUser.uid) {
                     // Nếu chính mình tạo phòng này, chờ người khác vào
                     pvpGameRef = doc(gameCollection, lobbyId);
-                    infoEl.innerHTML = `Đã tạo phòng. ID: <strong>${lobbyId}</strong>. Bạn là X. Đang chờ đối thủ...`;
+                    infoEl.innerHTML = `Đã tạo phòng. ${size}x${size}. Bạn là X. Đang chờ đối thủ...`;
                 } else {
                     // Tham gia phòng
                     pvpGameRef = doc(gameCollection, lobbyId);
-                    isJoining = true;
                     
                     APP.player1Id = lobbyDoc.data().player1Id; 
                     APP.player2Id = auth.currentUser.uid;
                     
                     await updateDoc(pvpGameRef, { player2Id: APP.player2Id, player2Name: APP.playerName });
-                    infoEl.textContent = `Tham gia thành công. ID phòng: ${lobbyId}. Bạn là O.`;
+                    infoEl.textContent = `Tham gia thành công. ${size}x${size}. Bạn là O.`;
                 }
                 
             } else {
@@ -1569,9 +1534,10 @@
                 APP.player1Id = auth.currentUser.uid;
                 APP.player2Id = null;
 
-                const initialBoard = Array(9).fill(null);
+                const initialBoard = Array(boardSize).fill(null);
                 await setDoc(pvpGameRef, {
                     gameId: lobbyId,
+                    size: size, // LƯU KÍCH THƯỚC
                     player1Id: APP.player1Id,
                     player1Name: APP.playerName,
                     player2Id: null,
@@ -1579,9 +1545,9 @@
                     board: JSON.stringify(initialBoard),
                     turn: APP.player1Id, // X luôn đi trước
                     isOver: false,
-                    createdAt: Date.now() // Dùng cho logic dọn dẹp
+                    createdAt: Date.now() 
                 });
-                infoEl.innerHTML = `Đã tạo phòng. ID: <strong>${lobbyId}</strong>. Bạn là X. Đang chờ đối thủ...`;
+                infoEl.innerHTML = `Đã tạo phòng. ${size}x${size}. Bạn là X. Đang chờ đối thủ...`;
             }
             
             // Lắng nghe trạng thái phòng chơi
@@ -1594,7 +1560,6 @@
                         showAlert(`Game Over! ${state.winner} thắng!`, () => closeGame());
                     }
                 } else {
-                    // Phòng đã bị xóa (người chơi thoát)
                     showAlert('Phòng đã bị đóng bởi người chơi khác.', () => closeGame());
                 }
             }, (error) => {
@@ -1608,10 +1573,9 @@
             window.GAME = { 
                 destroy: () => { 
                     if(unsubscribe) unsubscribe(); 
-                    // Logic dọn dẹp phòng trống (chỉ người tạo phòng mới làm)
                     if(pvpGameRef && APP.player1Id === auth.currentUser.uid && !gameOver && !pvpState.player2Id) {
-                        // Nếu phòng vẫn còn trống sau 10 giây (dùng logic tạm thời)
-                        deleteDoc(pvpGameRef).catch(e => console.error("Lỗi xóa phòng trống:", e));
+                        // Vô hiệu hóa việc xóa phòng để tránh lỗi permission
+                        // deleteDoc(pvpGameRef).catch(e => console.error("Lỗi xóa phòng trống:", e));
                     }
                 } 
             };
@@ -1621,20 +1585,21 @@
         }
     }
     
-    // --- 8) Battleship (Hải Chiến) Implementation (PvP) ---
+    // --- 8) Battleship (Hải Chiến) Implementation (PvP & AI) ---
     function initBattleship(container, mode) {
-        if (mode !== 'pvp') {
-            showAlert('Hải Chiến chỉ hỗ trợ chế độ PvP.', () => closeGame());
-            return;
-        }
-
+        
         let pvpGameRef = null;
         let unsubscribe = null;
         let myShipBoard = Utils.placeShipsRandomly();
-        let myHitBoard = Array(10).fill(0).map(() => Array(10).fill(null)); // null, 'hit', 'miss'
+        let myHitBoard = Array(10).fill(0).map(() => Array(10).fill(null)); 
         let opponentHitBoard = Array(10).fill(0).map(() => Array(10).fill(null)); 
-        let myPlayerId = auth.currentUser.uid; // Khởi tạo ngay lập tức
-        let opponentPlayerId = null; // Khởi tạo
+        let myPlayerId = auth.currentUser.uid; 
+        let opponentPlayerId = null; 
+        let aiShipBoard = null;
+        let aiHits = Array(10).fill(0).map(() => Array(10).fill(null));
+        let isAiTurn = false;
+        // FIX: Khai báo biến currentPlayer ở đầu hàm
+        let currentPlayer;
         
         const root = document.createElement('div');
         root.innerHTML = `
@@ -1662,54 +1627,73 @@
         const bsTurnInfo = getEl('bsTurnInfo');
         const shipsLeftEl = getEl('shipsLeft');
         
+        const gridSize = 10;
+
+        function boardToFirestore(board2D, hitBoard2D) {
+            const flatShip = board2D.map(row => row.join(',')).join(';');
+            const flatHit = hitBoard2D.map(row => row.map(v => v || 'null').join(',')).join(';');
+            return { flatShip, flatHit };
+        }
+        
+        function parseBoardFromFirestore(flatBoard) {
+             return flatBoard.split(';').map(row => row.split(',').map(v => v === 'null' ? null : v));
+        }
+        function parseShipBoardFromFirestore(flatBoard) {
+             return flatBoard.split(';').map(row => row.split(',').map(v => v === 'true'));
+        }
+
         function renderBoards(state = {}) {
-            const isReady = state.player1ShipBoard && state.player2ShipBoard;
-            const isMyTurn = state.turn === myPlayerId;
-            const isHost = myPlayerId === state.player1Id;
+            let isReady = true;
+            let isMyTurn = true;
+            let currentOpponentHitBoard = null;
+            let currentMyHitBoard = null;
+            let currentMyShipBoard = myShipBoard;
             
-            // FIXED: Cập nhật opponentPlayerId từ state
-            opponentPlayerId = myPlayerId === state.player1Id ? state.player2Id : state.player1Id;
+            if (mode === 'pvp') {
+                isReady = state.player1ShipBoard && state.player2ShipBoard;
+                isMyTurn = state.turn === myPlayerId;
+                const isHost = myPlayerId === state.player1Id;
+                opponentPlayerId = myPlayerId === state.player1Id ? state.player2Id : state.player1Id;
 
-            if (isReady && !state.isOver) {
-                bsStatus.textContent = isMyTurn ? 'LƯỢT CỦA BẠN: Tấn công!' : 'Đang chờ đối thủ...';
-                bsTurnInfo.textContent = `Phòng ID: ${state.gameId} | Bạn: ${APP.playerName} (${isHost ? 'X' : 'O'})`;
-            } else if (state.isOver) {
-                 bsStatus.textContent = `GAME OVER! ${state.winnerName} thắng!`;
-                 bsTurnInfo.textContent = `Người thắng: ${state.winnerName}. ID phòng: ${state.gameId}`;
-            } else {
-                 bsStatus.textContent = 'Đang chờ người chơi 2...';
-            }
-            
-            // Cập nhật Hit boards từ Cloud
-            if (isReady) {
-                if (isHost) {
-                    // hitsP2 là các cú đánh của Player 2 vào Player 1 (Board của mình)
-                    // FIXED: Sửa cách parse board 1D string thành 2D array
-                    myHitBoard = state.hitsP2.split(';').map(row => row.split(',').map(v => v === 'null' ? null : v));
-                    // hitsP1 là các cú đánh của Player 1 vào Player 2 (Board đối thủ)
-                    opponentHitBoard = state.hitsP1.split(';').map(row => row.split(',').map(v => v === 'null' ? null : v));
+                // Lấy board từ Cloud
+                currentMyHitBoard = isHost ? parseBoardFromFirestore(state.hitsP2) : parseBoardFromFirestore(state.hitsP1);
+                currentOpponentHitBoard = isHost ? parseBoardFromFirestore(state.hitsP1) : parseBoardFromFirestore(state.hitsP2);
+                currentMyShipBoard = isHost ? parseShipBoardFromFirestore(state.player1ShipBoard) : parseShipBoardFromFirestore(state.player2ShipBoard);
+                
+                if (isReady && !state.isOver) {
+                    bsStatus.textContent = isMyTurn ? 'LƯỢT CỦA BẠN: Tấn công!' : 'Đang chờ đối thủ...';
+                    bsTurnInfo.textContent = `Phòng ID: ${state.gameId} | Bạn: ${APP.playerName} (${isHost ? 'P1' : 'P2'})`;
+                } else if (state.isOver) {
+                     bsStatus.textContent = `GAME OVER! ${state.winnerName} thắng!`;
+                     bsTurnInfo.textContent = `Người thắng: ${state.winnerName}. ID phòng: ${state.gameId}`;
                 } else {
-                    // Ngược lại nếu là Player 2
-                    myHitBoard = state.hitsP1.split(';').map(row => row.split(',').map(v => v === 'null' ? null : v));
-                    opponentHitBoard = state.hitsP2.split(';').map(row => row.split(',').map(v => v === 'null' ? null : v));
+                     bsStatus.textContent = 'Đang chờ người chơi 2...';
                 }
-            }
 
+            } else { // AI MODE
+                isAiTurn = currentPlayer !== myPlayerId;
+                isMyTurn = !isAiTurn;
+                currentMyHitBoard = myHitBoard;
+                currentOpponentHitBoard = opponentHitBoard;
+                bsStatus.textContent = isMyTurn ? 'LƯỢT CỦA BẠN: Tấn công AI!' : 'Đang chờ AI...';
+                bsTurnInfo.textContent = 'Chế độ Chơi AI (AI bắn ngẫu nhiên)';
+            }
+            
             // Render My Board
             myBoardEl.innerHTML = '';
-            for (let r = 0; r < 10; r++) {
-                for (let c = 0; c < 10; c++) {
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
                     const cell = document.createElement('div');
                     cell.className = 'b-cell';
-                    if (myShipBoard[r][c]) {
+                    if (currentMyShipBoard[r][c]) {
                         cell.classList.add('ship');
-                        if (myHitBoard[r][c] === 'hit') {
+                        if (currentMyHitBoard[r][c] === 'hit') {
                             cell.classList.add('hit');
                             cell.textContent = '🔥';
                         } else {
                             cell.textContent = '🛥️';
                         }
-                    } else if (myHitBoard[r][c] === 'miss') {
+                    } else if (currentMyHitBoard[r][c] === 'miss') {
                         cell.classList.add('miss');
                         cell.textContent = '💧';
                     }
@@ -1719,20 +1703,24 @@
             
             // Render Opponent Board (Attack)
             opponentBoardEl.innerHTML = '';
-            for (let r = 0; r < 10; r++) {
-                for (let c = 0; c < 10; c++) {
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
                     const cell = document.createElement('div');
                     cell.className = 'b-cell';
                     cell.dataset.r = r;
                     cell.dataset.c = c;
                     
-                    if (opponentHitBoard[r][c] === 'hit') {
+                    if (currentOpponentHitBoard[r][c] === 'hit') {
                         cell.classList.add('hit');
                         cell.textContent = '🔥';
-                    } else if (opponentHitBoard[r][c] === 'miss') {
+                    } else if (currentOpponentHitBoard[r][c] === 'miss') {
                         cell.classList.add('miss');
                         cell.textContent = '💧';
-                    } else if (isReady && isMyTurn && !state.isOver) {
+                    } 
+                    
+                    let canAttack = mode === 'pvp' ? (isReady && isMyTurn && !state.isOver) : isMyTurn;
+                    
+                    if (canAttack && !currentOpponentHitBoard[r][c]) {
                         cell.style.cursor = 'pointer';
                         cell.onclick = handleAttack;
                     }
@@ -1740,103 +1728,158 @@
                 }
             }
             
-            shipsLeftEl.textContent = `Thuyền của bạn còn: ${Utils.countShipsLeft(myShipBoard, myHitBoard)}/17`;
-            if (state.isOver) {
-                // Đảm bảo không thể nhấn sau khi game kết thúc
+            shipsLeftEl.textContent = `Thuyền của bạn còn: ${Utils.countShipsLeft(currentMyShipBoard, currentMyHitBoard)}/17`;
+            
+            if (state.isOver && mode === 'pvp') {
                 opponentBoardEl.querySelectorAll('.b-cell').forEach(c => c.onclick = null);
             }
         }
         
+        // Logic AI bắn (Chế độ chơi đơn)
+        function aiShoot() {
+            if (!isAiTurn) return;
+            
+            // Tìm ô chưa bị bắn trên bàn chơi của người chơi (myHitBoard)
+            let unhitCells = [];
+            for(let r=0; r<gridSize; r++) {
+                for(let c=0; c<gridSize; c++) {
+                    if (myHitBoard[r][c] === null) {
+                        unhitCells.push({r, c});
+                    }
+                }
+            }
+            
+            if (unhitCells.length > 0) {
+                const target = unhitCells[Math.floor(Math.random() * unhitCells.length)];
+                
+                const isHit = myShipBoard[target.r][target.c];
+                const hitStatus = isHit ? 'hit' : 'miss';
+                
+                myHitBoard[target.r][target.c] = hitStatus;
+                
+                if (isHit) {
+                    bsTurnInfo.textContent = 'AI đã bắn TRÚNG!';
+                } else {
+                    bsTurnInfo.textContent = 'AI đã bắn TRƯỢT.';
+                }
+                
+                currentPlayer = myPlayerId; // Chuyển lượt lại cho người chơi
+                renderBoards();
+                checkGameOver(false);
+            }
+        }
+
         async function handleAttack(e) {
-            if (!pvpGameRef || !auth.currentUser) return;
             const r = parseInt(e.target.dataset.r);
             const c = parseInt(e.target.dataset.c);
             
-            if (opponentHitBoard[r][c]) {
-                showAlert('Bạn đã bắn ô này rồi!');
-                return;
-            }
+            if (opponentHitBoard[r][c]) return;
 
             // Tạm thời disable click
             opponentBoardEl.querySelectorAll('.b-cell').forEach(c => c.onclick = null);
 
-            // Cập nhật trạng thái
-            await updateDoc(pvpGameRef, { 
-                lastAttack: JSON.stringify({ r, c, attackerId: myPlayerId }),
-                turn: opponentPlayerId, // Chuyển lượt cho đối thủ
-            }); 
+            if (mode === 'pvp') {
+                // Logic PvP (Cloud)
+                if (!pvpGameRef || !auth.currentUser) return;
+                await updateDoc(pvpGameRef, { 
+                    lastAttack: JSON.stringify({ r, c, attackerId: myPlayerId }),
+                    turn: opponentPlayerId, // Chuyển lượt cho đối thủ
+                }); 
+                
+            } else { 
+                // Logic AI (Single Player)
+                const isHit = aiShipBoard[r][c];
+                const hitStatus = isHit ? 'hit' : 'miss';
+                
+                opponentHitBoard[r][c] = hitStatus;
+                
+                if (isHit) {
+                    bsTurnInfo.textContent = 'Bắn TRÚNG! Tiếp tục lượt...';
+                } else {
+                    bsTurnInfo.textContent = 'Bắn TRƯỢT. Chuyển lượt cho AI...';
+                    currentPlayer = 'AI';
+                    renderBoards();
+                    
+                    // Kích hoạt AI bắn
+                    setTimeout(aiShoot, 1000);
+                }
+                
+                renderBoards();
+                checkGameOver(false);
+            }
+        }
+        
+        function checkGameOver(isPvp, winnerId = null, winnerName = null) {
+            let myShipsLeft = Utils.countShipsLeft(myShipBoard, myHitBoard);
+            let opponentShipsLeft = mode === 'pvp' 
+                ? (isPvp ? (myPlayerId === pvpState.player1Id ? pvpState.player2ShipsLeft : pvpState.player1ShipsLeft) : 17) // PvP sẽ kiểm tra từ state (không dùng local)
+                : Utils.countShipsLeft(aiShipBoard, opponentHitBoard); // AI dùng board local
+                
+            if (myShipsLeft <= 0 || opponentShipsLeft <= 0) {
+                const winner = myShipsLeft > 0 ? APP.playerName : (mode === 'pvp' ? winnerName : 'AI');
+                const score = myShipsLeft > 0 ? 1000 + opponentShipsLeft * 10 : 0;
+                
+                if (isPvp) {
+                    // PvP đã được xử lý qua onSnapshot và updateDoc
+                    return;
+                }
+                
+                showAlert(`Game Over! ${winner} thắng! Điểm: ${score}`, () => {
+                    pushScore(APP.playerName, score, 'battleship');
+                    closeGame();
+                });
+                
+                if (window.GAME.destroy) window.GAME.destroy();
+            }
         }
         
         async function setupPvp() {
+            // Khởi tạo trạng thái cho PvP (đã giữ nguyên logic tự động ghép phòng)
             bsStatus.textContent = 'Đang tìm phòng chơi...';
+            // ... (Logic PvP tự động ghép phòng - giữ nguyên như phiên bản trước) ...
             
             const gameCollection = collection(db, "battleship_lobbies");
             
-            // --- Logic Tự động Ghép phòng ---
             const q = query(gameCollection, where("player2Id", "==", null), limit(1));
             const availableLobbies = await getDocs(q);
             
             let lobbyId;
-            
-            // Đảm bảo myPlayerId được khởi tạo
             myPlayerId = auth.currentUser.uid;
-            
-            // Khởi tạo opponentPlayerId là null để tránh lỗi updateDoc
             opponentPlayerId = null;
 
             if (!availableLobbies.empty) {
-                // TÌM THẤY phòng đang chờ
                 const lobbyDoc = availableLobbies.docs[0];
                 lobbyId = lobbyDoc.id;
                 
                 if (lobbyDoc.data().player1Id === myPlayerId) {
-                    // Nếu chính mình tạo phòng này, chờ người khác vào
                     pvpGameRef = doc(gameCollection, lobbyId);
-                    bsStatus.innerHTML = `Đã tạo phòng. ID: <strong>${lobbyId}</strong>. Bạn là P1. Đang chờ đối thủ...`;
-                    opponentPlayerId = null; // Vẫn là null cho đến khi Player 2 tham gia
+                    bsStatus.innerHTML = `Đã tạo phòng. Bạn là P1. Đang chờ đối thủ...`;
                 } else {
-                    // Tham gia phòng
                     pvpGameRef = doc(gameCollection, lobbyId);
-                    
                     opponentPlayerId = lobbyDoc.data().player1Id;
-                    
-                    const boardToFirestore = (board2D, hitBoard2D) => {
-                        const flatShip = board2D.map(row => row.join(',')).join(';');
-                        const flatHit = hitBoard2D.map(row => row.map(v => v || 'null').join(',')).join(';');
-                        return { flatShip, flatHit };
-                    };
                     
                     const { flatShip: flatShipBoard, flatHit: flatHitBoard } = boardToFirestore(myShipBoard, myHitBoard);
                     
-                    // FIXED: Gửi myPlayerId cho player2Id (đã được khởi tạo)
                     await updateDoc(pvpGameRef, { 
                         player2Id: myPlayerId, 
                         player2Name: APP.playerName,
                         player2ShipBoard: flatShipBoard,
                         hitsP2: flatHitBoard,
                     });
-                    bsStatus.innerHTML = `Tham gia thành công. ID phòng: ${lobbyId}. Bạn là P2. Đang chờ P1 đi trước...`;
+                    bsStatus.innerHTML = `Tham gia thành công. Bạn là P2. Đang chờ P1 đi trước...`;
                 }
                 
             } else {
-                // KHÔNG TÌM THẤY, TẠO phòng mới
                 lobbyId = Utils.generateGameId();
                 pvpGameRef = doc(gameCollection, lobbyId);
                 
-                const boardToFirestore = (board2D, hitBoard2D) => {
-                    const flatShip = board2D.map(row => row.join(',')).join(';');
-                    const flatHit = hitBoard2D.map(row => row.map(v => v || 'null').join(',')).join(';');
-                    return { flatShip, flatHit };
-                };
-                
-                opponentPlayerId = null;
                 const { flatShip: flatShipBoard, flatHit: flatHitBoard } = boardToFirestore(myShipBoard, myHitBoard);
 
                 await setDoc(pvpGameRef, {
                     gameId: lobbyId,
                     player1Id: myPlayerId,
                     player1Name: APP.playerName,
-                    player2Id: null, // Khởi tạo rõ ràng là null
+                    player2Id: null, 
                     player2Name: null,
                     player1ShipBoard: flatShipBoard,
                     player2ShipBoard: null, 
@@ -1849,50 +1892,33 @@
                     winnerName: null,
                     createdAt: Date.now()
                 });
-                bsStatus.innerHTML = `Đã tạo phòng. ID: <strong>${lobbyId}</strong>. Bạn là P1. Đang chờ đối thủ...`;
+                bsStatus.innerHTML = `Đã tạo phòng. Bạn là P1. Đang chờ đối thủ...`;
             }
             
-            // Lắng nghe trạng thái phòng chơi
             unsubscribe = onSnapshot(pvpGameRef, async (docSnapshot) => {
                 if (docSnapshot.exists()) {
                     const state = docSnapshot.data();
-                    
-                    // FIXED: Cập nhật opponentPlayerId từ state
                     opponentPlayerId = myPlayerId === state.player1Id ? state.player2Id : state.player1Id;
 
-                    // Xử lý đòn tấn công mới (nếu tấn công đến từ đối thủ)
                     if (state.lastAttack) {
                         const attackData = JSON.parse(state.lastAttack);
                         
                         if (attackData.attackerId === opponentPlayerId && state.turn === myPlayerId) {
                              const { r, c } = attackData;
                             
-                            // Đây là Player bị tấn công, cập nhật hits của mình
                             const myShipBoardFlat = myPlayerId === state.player1Id ? state.player1ShipBoard : state.player2ShipBoard;
-                            // FIXED: Sửa cách parse board 1D string thành 2D array (Ship Board)
-                            const myShipBoard2D = myShipBoardFlat.split(';').map(row => row.split(',').map(v => v === 'true'));
+                            const myShipBoard2D = parseShipBoardFromFirestore(myShipBoardFlat);
                             
                             const isHit = myShipBoard2D[r][c];
                             const hitStatus = isHit ? 'hit' : 'miss';
                             
-                            // Cập nhật hits của mình (ví dụ hitsP2 là hits mà P1 bắn vào P2)
                             const myHitsField = myPlayerId === state.player1Id ? 'hitsP2' : 'hitsP1'; 
                             
-                            // Lấy mảng hits hiện tại của mình từ Cloud
-                            // FIXED: Sửa cách parse board 1D string thành 2D array (Hit Board)
-                            let currentMyHits = state[myHitsField].split(';').map(row => row.split(',').map(v => v === 'null' ? null : v));
+                            let currentMyHits = parseBoardFromFirestore(state[myHitsField]);
                             currentMyHits[r][c] = hitStatus;
                             
-                            // Hàm chuyển board 2D array sang chuỗi để lưu Firestore
-                            const boardToFirestore = (board2D, hitBoard2D) => {
-                                const flatShip = board2D.map(row => row.join(',')).join(';');
-                                const flatHit = hitBoard2D.map(row => row.map(v => v || 'null').join(',')).join(';');
-                                return { flatShip, flatHit };
-                            };
-
                             const { flatHit: newMyHitsFlat } = boardToFirestore(myShipBoard, currentMyHits);
                             
-                            // Kiểm tra kết thúc game
                             const shipsRemaining = Utils.countShipsLeft(myShipBoard2D, currentMyHits);
                             let gameOverUpdate = {};
                             
@@ -1908,16 +1934,14 @@
                                 });
                             }
 
-                            // Ghi lại kết quả bắn và chuyển lượt lại cho đối thủ
                             await updateDoc(pvpGameRef, {
                                 [myHitsField]: newMyHitsFlat,
-                                lastAttack: null, // Xóa tấn công cũ
+                                lastAttack: null, 
                                 ...gameOverUpdate
                             });
                         }
                     }
                     
-                    // Cập nhật UI
                     renderBoards(state);
                 } else {
                     showAlert('Phòng không tồn tại.', () => closeGame());
@@ -1928,13 +1952,22 @@
             });
         }
         
-        setupPvp();
+        if (mode === 'pvp') {
+            setupPvp();
+        } else {
+            // AI Mode Setup
+            aiShipBoard = Utils.placeShipsRandomly(); // AI có bàn chơi riêng
+            currentPlayer = myPlayerId;
+            renderBoards();
+        }
+
         window.GAME = { 
             destroy: () => { 
                 if(unsubscribe) unsubscribe(); 
                 // Logic dọn dẹp phòng trống (chỉ người tạo phòng mới làm)
-                if(pvpGameRef && myPlayerId === auth.currentUser.uid && !opponentPlayerId) {
-                    deleteDoc(pvpGameRef).catch(e => console.error("Lỗi xóa phòng trống:", e));
+                if(mode === 'pvp' && pvpGameRef && myPlayerId === auth.currentUser.uid && !opponentPlayerId) {
+                    // Vô hiệu hóa việc xóa phòng để tránh lỗi permission
+                    // deleteDoc(pvpGameRef).catch(e => console.error("Lỗi xóa phòng trống:", e));
                 }
             } 
         };
@@ -1955,7 +1988,14 @@
           }
       }
       
-      // Không cần lưu cục bộ
+      // KHÔI PHỤC: Tải tên người chơi từ localStorage khi khởi động
+      const p = localStorage.getItem('sg_hub_player_name'); 
+      if(p){ 
+        playerInput.value = p; 
+        APP.playerName = p; 
+        playerDisplay.textContent = p; 
+        modalPlayer.textContent = p; 
+      }
       
       applyTheme();
       refreshLeaderboardUI(); 
@@ -1964,8 +2004,6 @@
     
     init();
     
-    // Gán biến global để có thể gọi từ nội dung Quiz
-    window.generateQuizExplanation = generateQuizExplanation;
     window.closeGame = closeGame; 
 
   })();
@@ -1974,3 +2012,4 @@
 <script src="/_vercel/speed-insights/script.js"></script>
 </body>
 </html>
+
