@@ -3,20 +3,16 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<link rel="icon" type="image/png" href="https://uploads.onecompiler.io/43u4wb3ft/43unfu266/Black%20and%20White%20Circle%20Class%20Logo.png">
-<title>Student Game Hub</title>
+ <link rel="icon" type="image/png" href="https://uploads.onecompiler.io/43u4wb3ft/43unfu266/Black%20and%20White%20Circle%20Class%20Logo.png">
+<title>Student Game Hub </title>
 <!--
   Student Game Hub - Enhanced Edition
-  - Replaced "glass" modal with a solid, blurred background design.
-  - Fixed dropdown visibility bug.
-  - Added new animations and hover effects for a more dynamic feel.
-  - Replaced Space Shooter with Tic-Tac-Toe.
-  - Replaced all native alerts/confirms with a custom modal UI.
-  - FIXED: Click-through issue caused by mouse glow effect.
-  - FIXED: Memory game symbols visibility with new fruit icons.
-  - FIXED: Flappy Bird collision detection.
-  - UPGRADED: Leaderboard is now online with Firebase Firestore.
-  - FIX: Added fallback to localStorage if Firebase anonymous auth is not enabled.
+  - UPGRADED: Leaderboard is now 100% ONLINE with Firebase Firestore.
+  - REMOVED: All localStorage fallback logic for leaderboard.
+  - REMOVED: Leaderboard reset/export buttons.
+  - FIX: Ensures real-time sync via onSnapshot is the only data source.
+  - UPDATED: Firebase config to use the new project 'score-57210'.
+  - WARNING: Current Firebase Security Rules (if set to allow read, write: if false) will prevent this app from saving/loading scores.
 -->
 <style>
   @keyframes background-pan {
@@ -181,7 +177,7 @@
     <div class="logo">GAME</div>
     <div>
       <h1>Student Game Hub </h1>
-      <p class="lead">Giao diện mới, hiệu ứng sống động.</p>
+      <p class="lead">Giao diện mới, hiệu ứng sống động và bảng xếp hạng đồng bộ Đám mây.</p>
     </div>
     <div class="top-right">
       <div class="card" style="padding:8px 10px">
@@ -197,7 +193,7 @@
         <input id="playerNameInput" type="text" placeholder="Nhập tên (bắt buộc)" />
         <div class="controls">
           <button class="btn" id="btnStart">Lưu tên & Bắt đầu</button>
-          <button class="ghost" id="btnClear">Xóa</button>
+          <button class="ghost" id="btnClear">Xóa tên</button>
         </div>
         <div style="margin-left:auto" class="control-row">
           <label class="small muted">Theme</label>
@@ -317,14 +313,15 @@
           </div>
           <div class="row" style="display:flex;gap:8px;align-items:center">
             <label class="small">Leaderboards</label>
-            <div style="margin-left:auto"><button class="ghost" id="btnExport">Xuất CSV</button> <button class="ghost" id="btnResetLB">Xóa</button></div>
+            <!-- Xóa nút Export và Reset khỏi giao diện -->
+            <div style="margin-left:auto"><button class="ghost" style="opacity:0.5; cursor: default;" disabled>Đã kết nối Cloud</button></div>
           </div>
         </div>
       </div>
 
       <div class="card leaderboard">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <div><strong>Bảng xếp hạng</strong><div id="leaderboardStatus" class="muted small">Offline</div></div>
+          <div><strong>Bảng xếp hạng</strong><div id="leaderboardStatus" class="muted small">Đang kết nối...</div></div>
         </div>
         <div class="board-wrap" id="leaderboardWrap">
           <table id="leaderboardTable">
@@ -373,14 +370,14 @@
   import { getFirestore, collection, query, onSnapshot, addDoc, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-firestore.js";
   import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-auth.js";
   
-  // Your web app's Firebase configuration
+  // Cấu hình Firebase mới của bạn
   const firebaseConfig = {
-    apiKey: "AIzaSyA6MzA5S1JxABA6PPsiH1dV_JjMpoqkxIM",
-    authDomain: "quan-ly-sinh-vien-e3307.firebaseapp.com",
-    projectId: "quan-ly-sinh-vien-e3307",
-    storageBucket: "quan-ly-sinh-vien-e3307.appspot.com",
-    messagingSenderId: "1021646737843",
-    appId: "1:1021646737843:web:7edb6d3be5257c4d10fbc6"
+    apiKey: "AIzaSyArKIBD9RWIOhNgPrPLKtPHn1EsQUHjmE8",
+    authDomain: "score-57210.firebaseapp.com",
+    projectId: "score-57210",
+    storageBucket: "score-57210.firebasestorage.app",
+    messagingSenderId: "425618398285",
+    appId: "1:425618398285:web:47eccf49c844df2e865004"
   };
 
   let db;
@@ -394,6 +391,7 @@
     firebaseActive = true;
   } catch (e) {
     console.error("Firebase initialization failed:", e);
+    document.getElementById('leaderboardStatus').textContent = 'Cloud bị lỗi.';
   }
 
 
@@ -402,7 +400,6 @@
     "use strict";
     
     // --- State and Constants ---
-    const LS_KEY = 'sg_hub_lb_v1_fallback';
     let APP = {
       playerName: null,
       leaderboard: [],
@@ -416,7 +413,7 @@
     const playerDisplay = getEl('playerNameDisplay'), overlay = getEl('overlay'), modalBody = getEl('modalBody');
     const modalTitle = getEl('modalTitle'), modalSubtitle = getEl('modalSubtitle'), modalPlayer = getEl('modalPlayer');
     const btnExit = getEl('btnExit'), btnMute = getEl('btnMute'), lbTableBody = document.querySelector('#leaderboardTable tbody');
-    const btnExport = getEl('btnExport'), btnResetLB = getEl('btnResetLB'), themeSelect = getEl('themeSelect');
+    const themeSelect = getEl('themeSelect');
     const musicToggle = getEl('musicToggle');
     const customAlert = getEl('customAlert'), customAlertMessage = getEl('customAlertMessage');
     let customAlertOk = getEl('customAlertOk'), customAlertCancel = getEl('customAlertCancel');
@@ -471,32 +468,46 @@
     }
 
     function refreshLeaderboardUI() {
-        if (firebaseActive) {
-            leaderboardStatus.textContent = 'Online';
-            const q = query(collection(db, "leaderboard"), orderBy("score", "desc"), limit(50));
-            onSnapshot(q, (querySnapshot) => {
-                const scores = [];
-                querySnapshot.forEach((doc) => {
-                    scores.push(doc.data());
-                });
-                renderLeaderboard(scores);
-            }, (error) => {
-                console.error("Firebase snapshot error:", error);
-                firebaseActive = false; // Fallback on permission error
-                refreshLeaderboardUI();
-            });
-        } else {
-            leaderboardStatus.textContent = 'Offline';
-            const scores = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
-            renderLeaderboard(scores);
+        if (!firebaseActive) {
+            leaderboardStatus.textContent = 'Lỗi kết nối Firebase.';
+            return;
         }
+
+        leaderboardStatus.textContent = 'Online (Đồng bộ)';
+        // Thiết lập truy vấn tới collection "leaderboard", sắp xếp theo điểm, giới hạn 50 mục
+        const q = query(collection(db, "leaderboard"), orderBy("score", "desc"), limit(50));
+        
+        // Sử dụng onSnapshot để lắng nghe cập nhật thời gian thực
+        onSnapshot(q, (querySnapshot) => {
+            const scores = [];
+            // Đặt userId hiện tại, nếu có (để tô sáng người chơi của mình)
+            const currentUserId = auth.currentUser ? auth.currentUser.uid : null;
+            
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                scores.push(data);
+            });
+            renderLeaderboard(scores, currentUserId);
+        }, (error) => {
+            // Khi Security Rules ngăn cấm việc đọc, lỗi sẽ xuất hiện ở đây.
+            console.error("Firebase snapshot error (Check Security Rules):", error);
+            leaderboardStatus.textContent = 'Lỗi đọc dữ liệu Cloud. (Kiểm tra Rules)';
+        });
     }
 
-    function renderLeaderboard(scores) {
+    function renderLeaderboard(scores, currentUserId) {
         lbTableBody.innerHTML = '';
-        scores.sort((a,b) => b.score - a.score).slice(0, 50).forEach((e, i) => {
+        scores.forEach((e, i) => {
+            // Hiển thị tên (cùng với ID nếu bạn muốn người khác tìm thấy)
+            const nameDisplay = escapeHtml(e.name);
+            
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${i+1}</td><td>${escapeHtml(e.name)}</td><td>${e.score}</td><td>${gameTitle(e.gameId)}</td><td>${new Date(e.date).toLocaleDateString()}</td>`;
+            // Tô sáng người chơi hiện tại (MỌI NGƯỜI CÓ THỂ BIẾT ĐƯỢC AI CAO AI THẤP KHI NHÌNH BẢN XẾP HẠNG)
+            if (e.userId === currentUserId) {
+                tr.style.backgroundColor = 'rgba(255, 211, 110, 0.1)'; // Màu vàng nhạt
+            }
+            
+            tr.innerHTML = `<td>${i+1}</td><td>${nameDisplay}</td><td>${e.score}</td><td>${gameTitle(e.gameId)}</td><td>${new Date(e.date).toLocaleDateString()}</td>`;
             lbTableBody.appendChild(tr);
         });
     }
@@ -552,28 +563,31 @@
 
     async function pushScore(name, score, gameId){
       if (score <= 0) return;
-      const entry = { name: name, score: Math.round(score), gameId: gameId, date: Utils.nowISO() };
       
-      if(firebaseActive) {
-          try {
-            await addDoc(collection(db, "leaderboard"), entry);
-          } catch (e) {
-            console.error("Error adding document to Firebase: ", e);
-            // Fallback to local on error
-            saveToLocal(entry);
-          }
-      } else {
-        saveToLocal(entry);
+      if(!firebaseActive || !auth.currentUser) {
+          console.error("Không thể lưu điểm: Firebase không hoạt động hoặc người dùng chưa đăng nhập.");
+          showAlert('Không thể lưu điểm: Vui lòng kiểm tra kết nối Cloud.', null);
+          return;
+      }
+      
+      const entry = { 
+          name: name, 
+          score: Math.round(score), 
+          gameId: gameId, 
+          date: Utils.nowISO(),
+          userId: auth.currentUser.uid // Lưu userId để xác định người chơi
+      };
+      
+      try {
+        // Lưu điểm vào collection "leaderboard"
+        await addDoc(collection(db, "leaderboard"), entry);
+      } catch (e) {
+        // Khi Security Rules ngăn cấm việc ghi, lỗi sẽ xuất hiện ở đây.
+        console.error("Lỗi khi thêm điểm vào Cloud (Check Security Rules): ", e);
+        showAlert('Lỗi khi lưu điểm lên Cloud. (Kiểm tra Rules)', null);
       }
     }
     
-    function saveToLocal(entry) {
-        let localScores = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
-        localScores.push(entry);
-        localStorage.setItem(LS_KEY, JSON.stringify(localScores));
-        refreshLeaderboardUI();
-    }
-
     // --- Event Listeners Setup ---
     function setupEventListeners() {
         btnStart.addEventListener('click', ()=>{
@@ -590,11 +604,6 @@
         themeSelect.addEventListener('change', (e)=>{ APP.settings.theme = e.target.value; applyTheme(); });
         musicToggle.addEventListener('change', (e)=>{ APP.settings.music = e.target.value !== 'off'; });
         btnMute.addEventListener('click', ()=>{ APP.settings.music = !APP.settings.music; btnMute.textContent = APP.settings.music ? 'Tắt nhạc' : 'Bật nhạc'; });
-
-        btnExport.addEventListener('click', ()=> showAlert('Chức năng này không được hỗ trợ khi dùng leaderboard online.'));
-        btnResetLB.addEventListener('click', ()=> showConfirm('Bạn có muốn xóa bảng xếp hạng offline không?', (ok) => {
-            if(ok) { localStorage.setItem(LS_KEY, '[]'); refreshLeaderboardUI(); }
-        }));
 
         btnExit.addEventListener('click', closeGame);
         window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeGame(); });
@@ -615,13 +624,22 @@
         });
     }
     
-    // --- Game Implementations ---
+    // --- Game Implementations (Không thay đổi) ---
     function initQuiz(container){
         const difficulty = getEl('quizDifficulty').value;
         const timePerQuestion = difficulty==='easy'?18: (difficulty==='normal'?12:8);
         const questions = [
             {q:'Thủ đô của Việt Nam là?', a:'Hà Nội', opts:['Hà Nội','Hồ Chí Minh','Đà Nẵng','Hải Phòng']},
             {q:'2 + 3 = ?', a:'5', opts:['4','5','6','3']},
+           {q:'Mặt trời mọc ở hướng nào?', a:'Đông', opts:['Tây','Đông','Nam','Bắc']},
+            {q:'Việt Nam thuộc châu lục nào?', a:'Á', opts:['Âu','Mỹ','Phi','Á']} ,
+           {q:'Hình vuông có bao nhiêu cạnh?', a:'4', opts:['3','4','5','6']} ,
+           {q:'Tháng nào có 28 ngày?', a:'Tháng Hai', opts:['Tháng Giêng','Tháng Hai','Tháng Ba','Tháng Tư']} ,
+           {q:'Ai là người tìm ra thuyết tương đối?', a:'Albert Einstein', opts:['Isaac Newton','Galileo Galilei','Albert Einstein','Stephen Hawking']}, 
+           {q:'Con gì sống dưới nước và có vảy?', a:'Cá', opts:['Gà','Mèo','Cá','Chó']}, 
+           {q:'Nguyên tố hóa học nào có ký hiệu là O?', a:'Oxy', opts:['Oxy','Nitơ','Cacbon','Hiđro']}, 
+            {q:'Năm 2025 thuộc thế kỷ nào?', a:'XXI', opts:['XIX','XX','XXI','XXII']} ,
+            {q:'Ai là tác giả của Truyện Kiều?', a:'Nguyễn Du', opts:['Hồ Xuân Hương','Nguyễn Trãi','Nguyễn Du','Cao Bá Quát']}
         ];
         const qs = Utils.shuffleArray(questions).slice(0,5);
         let idx=0, score=0, timeLeft=timePerQuestion;
@@ -896,14 +914,18 @@
     async function init(){
       if (firebaseActive) {
           try {
-            await signInAnonymously(auth);
-            console.log("Signed in anonymously");
+            // Đăng nhập vô danh để lấy userId, cần thiết cho Firebase Security Rules
+            await signInAnonymously(auth); 
+            console.log("Signed in anonymously to Firebase.");
+            leaderboardStatus.textContent = 'Online (Đã đăng nhập)';
           } catch(e) {
-            console.error("Anonymous sign in failed. This is likely a Firebase configuration issue. Anonymous sign-in is not enabled in the Firebase console. Falling back to localStorage.", e);
-            firebaseActive = false; // Disable firebase features on auth fail
+            console.error("Anonymous sign in failed. Check Firebase settings.", e);
+            firebaseActive = false; // Vô hiệu hóa tính năng Firebase nếu Auth thất bại
+            leaderboardStatus.textContent = 'Lỗi Auth Firebase.';
           }
       }
       
+      // Giữ lại việc lưu tên người chơi cục bộ
       const p = localStorage.getItem('sg_hub_player_name'); 
       if(p){ 
         playerInput.value = p; 
@@ -911,6 +933,7 @@
         playerDisplay.textContent = p; 
         modalPlayer.textContent = p; 
       }
+      
       applyTheme();
       refreshLeaderboardUI(); 
       setupEventListeners();
@@ -920,8 +943,7 @@
 
   })();
 </script>
+   <script src="/_vercel/insights/script.js"></script>
+    <script src="/_vercel/speed-insights/script.js"></script>
 </body>
 </html>
-
-
-
