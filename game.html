@@ -1465,18 +1465,32 @@
             boardEl.innerHTML = '';
             
             let isMyTurn = true;
+            let myMark = 'X'; // Mặc định cho AI
+            let currentOpponentName = 'Máy';
+            
             if (mode === 'pvp') {
                 const isTurn = auth.currentUser.uid === state.turn;
                 isMyTurn = isTurn;
                 
+                myMark = auth.currentUser.uid === state.player1Id ? 'X' : 'O';
+                currentOpponentName = auth.currentUser.uid === state.player1Id ? (state.player2Name || 'Đối thủ (O)') : (state.player1Name || 'Đối thủ (X)');
+                
                 // Cập nhật trạng thái phòng chơi
-                infoEl.textContent = state.winner ? `Game Over. ${state.winner} thắng!` : 
-                                      state.player2Id ? (isTurn ? 'Lượt của BẠN' : 'Đang chờ đối thủ...') : 
-                                      'Đang chờ người chơi thứ 2...';
+                let infoText;
+                if (state.winner) {
+                    infoText = `Game Over! ${state.winner} thắng!`;
+                } else if (!state.player2Id) {
+                    infoText = `Đang chờ đối thủ tham gia... (Bạn là ${myMark})`;
+                } else {
+                    const myName = auth.currentUser.uid === state.player1Id ? state.player1Name : state.player2Name;
+                    const turnName = isTurn ? myName : currentOpponentName;
+                    infoText = isTurn ? `Lượt của BẠN (${myMark})` : `Đang chờ ${currentOpponentName} (${myMark === 'X' ? 'O' : 'X'}) đi...`;
+                }
+                infoEl.textContent = infoText;
                 
                 if (state.board) board = JSON.parse(state.board);
             } else {
-                infoEl.textContent = 'Lượt của bạn (X)';
+                infoEl.textContent = `Lượt của bạn (${currentPlayer})`;
             }
             
             board.forEach((cell, index) => {
@@ -1499,12 +1513,14 @@
                 cellEl.textContent = cell;
                 
                 if (mode === 'pvp') {
-                     // Nếu PvP: Chỉ click được khi đến lượt mình và ô trống
+                     // Nếu PvP: Chỉ click được khi đến lượt mình, ô trống, và đã có P2
+                    const canClick = isMyTurn && cell === null && !state.isOver && state.player2Id;
+                    
                     cellEl.onclick = () => { 
-                        if (isMyTurn && cell === null && !state.isOver && state.player2Id) handleClick(index); 
-                        else if (!state.player2Id && isMyTurn) infoEl.textContent = 'Vui lòng chờ đối thủ tham gia!';
+                        if (canClick) handleClick(index); 
+                        else if (!state.player2Id && isMyTurn) showAlert('Vui lòng chờ đối thủ tham gia để bắt đầu.');
                     };
-                    cellEl.style.cursor = (isMyTurn && cell === null && !state.isOver && state.player2Id) ? 'pointer' : 'default';
+                    cellEl.style.cursor = canClick ? 'pointer' : 'default';
                 } else {
                     // Nếu AI: Chỉ click khi là X
                     cellEl.onclick = () => handleClick(index);
@@ -1537,6 +1553,7 @@
                 lobbyId = opponentLobbyDoc.id;
                 pvpGameRef = doc(gameCollection, lobbyId);
                 
+                // Player O (người tham gia)
                 await updateDoc(pvpGameRef, { 
                     player2Id: auth.currentUser.uid, 
                     player2Name: APP.playerName 
@@ -1574,7 +1591,7 @@
                         player2Id: null,
                         player2Name: null,
                         board: JSON.stringify(initialBoard),
-                        turn: auth.currentUser.uid,
+                        turn: auth.currentUser.uid, // Player X (người tạo) đi trước
                         isOver: false,
                         createdAt: Date.now() 
                     });
@@ -1589,7 +1606,12 @@
                     render(state);
                     if (state.isOver) {
                         unsubscribe();
-                        showAlert(`Game Over! ${state.winner} thắng!`, () => closeGame());
+                        // Lấy tên người thắng để hiển thị
+                        const winnerName = (state.winner === 'X') 
+                            ? state.player1Name 
+                            : (state.winner === 'O' ? state.player2Name : 'Hòa');
+
+                        showAlert(`Game Over! ${winnerName || state.winner} thắng!`, () => closeGame());
                     }
                 } else {
                     showAlert('Phòng đã bị đóng bởi người chơi khác.', () => closeGame());
@@ -1910,7 +1932,7 @@
                 bsStatus.innerHTML = `Tham gia thành công. Bạn là P2. Đang chờ P1 đi trước...`;
 
             } else {
-                // KHÔNG TÌM THẤY. Kiểm tra phòng của mình
+                // KHÔNG TÌM THẤT. Kiểm tra phòng của mình
                 const myLobbyQuery = query(gameCollection,
                     where("player1Id", "==", myPlayerId),
                     where("player2Id", "==", null),
