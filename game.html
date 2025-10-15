@@ -13,8 +13,8 @@
   - ADDED: Battleship (Hải Chiến) now supports both AI (Single Player) and PvP.
   - UPGRADED: Tic-Tac-Toe supports MULTIPLE GRID SIZES (3x3, 6x6, 8x8, 10x10).
   - MODIFIED: Quiz now shows 6 shuffled questions.
-  - FIX (CRITICAL): Resolved 'undefined' error in Tic-Tac-Toe PvP and Battleship PvP by ensuring all IDs are defined before Firebase update.
-  - FIX: PvP auto-matching logic is now more robust, preventing players from getting stuck in their own lobbies.
+  - FIX (CRITICAL): Resolved 'undefined' error in Tic-Tac-Toe PvP by adding a robust guardrail to prevent race conditions.
+  - FIX: PvP auto-matching logic is now more robust.
   - FIX (TTT Turn Logic): Ensured accurate turn switching and click permission check for Player O.
 -->
 <style>
@@ -1200,7 +1200,7 @@
       let y = canvas.height / 2, vy=0, pipes=[], score=0; // Bắt đầu ở giữa
       let tick = setInterval(loop, 30);
       
-      // Tạo ống đầu tiên xa hơn để tránh chết ngay lập lập tức
+      // Tạo ống đầu tiên xa hơn để tránh chết ngay lập tức
       pipes.push({x: canvas.width * 1.5, top: 150, gap: 100, scored: false});
 
       function loop(){
@@ -1300,11 +1300,15 @@
         const boardSize = size * size;
         const WIN_CONDITION = 3; // Thắng khi 3 ô liên tiếp (đơn giản hóa)
         let board = Array(boardSize).fill(null);
-        let currentPlayer = 'X';
         let gameOver = false;
         let pvpGameRef = null;
         let unsubscribe = null;
         
+        // Thêm biến ID người chơi cục bộ để dễ quản lý trong phòng PvP
+        let myPlayerId = auth.currentUser.uid;
+        let player1Id = null; 
+        let player2Id = null;
+
         const boardEl = document.createElement('div');
         // FIXED: Apply CSS directly using parameters for multi-grid support
         boardEl.style.cssText = `
@@ -1324,7 +1328,6 @@
         container.appendChild(infoEl);
         
         let pvpState = {}; 
-
 
         function checkWinner() {
             // Kiểm tra chiến thắng (3 ô liên tiếp, hoặc 4 ô nếu game lớn hơn)
@@ -1413,35 +1416,42 @@
             if (gameOver || board[index]) return;
             
             if (mode === 'ai') {
-                if (currentPlayer !== 'X') return; // Chỉ cho người chơi (X) click
+                if (pvpState.turn !== 'X') return; // SỬA LỖI: dùng pvpState.turn (trong AI là X/O)
                 board[index] = 'X';
-                currentPlayer = 'O';
+                pvpState.turn = 'O'; // SỬA LỖI: dùng pvpState.turn (trong AI là X/O)
                 render();
                 if(!checkEndState(false)) setTimeout(aiMove, 500);
-            } else if (mode === 'pvp' && pvpGameRef && auth.currentUser.uid === pvpState.turn) {
-                 // Guardrail: Ngăn Player 1 đánh trước khi P2 tham gia
-                if (!pvpState.player2Id) {
+            } else if (mode === 'pvp' && pvpGameRef && myPlayerId === pvpState.turn) {
+                // CRITICAL FIX: Guardrail must be robust against race conditions.
+                // Check if the state from onSnapshot is fully populated with both players.
+                if (!pvpState || !pvpState.player1Id || !pvpState.player2Id) {
                     infoEl.textContent = 'Đang chờ người chơi thứ 2 tham gia...';
+                    // Log for debugging, but don't stop the game for the user.
+                    console.log("Move blocked: P2 not ready in state.", JSON.stringify(pvpState));
                     return;
                 }
                 
                 // Logic PvP
-                 const playerMark = auth.currentUser.uid === pvpState.player1Id ? 'X' : 'O';
+                 const playerMark = myPlayerId === pvpState.player1Id ? 'X' : 'O';
                  board[index] = playerMark;
                  render(); // Cập nhật local ngay lập tức
                  
-                 // SỬA LỖI: Logic chuyển lượt (dùng ternary operator an toàn)
-                 const nextTurnId = (auth.currentUser.uid === pvpState.player1Id) 
-                                    ? pvpState.player2Id 
+                 // CRITICAL FIX: Make turn calculation foolproof.
+                 const nextTurnId = (myPlayerId === pvpState.player1Id)
+                                    ? pvpState.player2Id
                                     : pvpState.player1Id;
 
-                 // Đảm bảo nextTurnId không bao giờ là undefined/null (vì pvpState.player2Id đã được kiểm tra ở Guardrail)
-                 const finalNextTurnId = nextTurnId; 
+                 // This check should be redundant now, but it's good for safety.
+                 if (typeof nextTurnId === 'undefined' || nextTurnId === null) {
+                    console.error("CRITICAL ERROR: nextTurnId is invalid!", nextTurnId, "State:", pvpState);
+                    showAlert("Lỗi nghiêm trọng khi chuyển lượt. Vui lòng thử lại.");
+                    return;
+                 }
 
                  // Đẩy lên Cloud
                  updateDoc(pvpGameRef, { 
                     board: JSON.stringify(board), 
-                    turn: finalNextTurnId // ĐÃ SỬA: nextTurnId luôn là một chuỗi ID hợp lệ
+                    turn: nextTurnId
                  }).catch(err => {
                     console.error("Lỗi updateDoc TicTacToe:", err);
                     showAlert("Lỗi đồng bộ Cloud. Vui lòng kiểm tra Rules/kết nối.");
@@ -1456,26 +1466,29 @@
             if (emptyCells.length === 0) return;
             let move = emptyCells[Math.floor(Math.random() * emptyCells.length)];
             board[move] = 'O';
-            currentPlayer = 'X';
+            pvpState.turn = 'X'; // SỬA LỖI: dùng pvpState.turn (trong AI là X/O)
             render();
             checkEndState(false);
         }
 
         function render(state = {}) {
             pvpState = state; // Cập nhật trạng thái PvP
+            // Cập nhật ID người chơi cục bộ cho dọn dẹp và logic chuyển lượt
+            player1Id = state.player1Id || null;
+            player2Id = state.player2Id || null;
 
             boardEl.innerHTML = '';
             
             let isMyTurn = true;
-            let myMark = 'X'; // Mặc định cho AI
+            let myMark = 'X'; 
             let currentOpponentName = 'Máy';
             
             if (mode === 'pvp') {
-                const isTurn = auth.currentUser.uid === state.turn;
+                const isTurn = myPlayerId === state.turn;
                 isMyTurn = isTurn;
                 
-                myMark = auth.currentUser.uid === state.player1Id ? 'X' : 'O';
-                currentOpponentName = auth.currentUser.uid === state.player1Id ? (state.player2Name || 'Đối thủ (O)') : (state.player1Name || 'Đối thủ (X)');
+                myMark = myPlayerId === state.player1Id ? 'X' : 'O';
+                currentOpponentName = myPlayerId === state.player1Id ? (state.player2Name || 'Đối thủ (O)') : (state.player1Name || 'Đối thủ (X)');
                 
                 // Cập nhật trạng thái phòng chơi
                 let infoText;
@@ -1484,15 +1497,17 @@
                 } else if (!state.player2Id) {
                     infoText = `Đang chờ đối thủ tham gia... (Bạn là ${myMark})`;
                 } else {
-                    const myName = auth.currentUser.uid === state.player1Id ? state.player1Name : state.player2Name;
+                    const myName = myPlayerId === state.player1Id ? state.player1Name : state.player2Name;
                     const turnName = isTurn ? myName : currentOpponentName;
                     infoText = isTurn ? `Lượt của BẠN (${myMark})` : `Đang chờ ${currentOpponentName} (${myMark === 'X' ? 'O' : 'X'}) đi...`;
                 }
                 infoEl.textContent = infoText;
                 
                 if (state.board) board = JSON.parse(state.board);
-            } else {
-                infoEl.textContent = `Lượt của bạn (${currentPlayer})`;
+            } else { // AI Mode
+                 // SỬA LỖI: pvpState.turn dùng để theo dõi lượt (X/O) trong chế độ AI
+                pvpState.turn = pvpState.turn || 'X'; 
+                infoEl.textContent = `Lượt của bạn (${pvpState.turn})`;
             }
             
             board.forEach((cell, index) => {
@@ -1548,7 +1563,7 @@
             const availableLobbiesSnapshot = await getDocs(openLobbiesQuery);
             
             // 2. Lọc ở Client để tìm phòng không phải của mình
-            const opponentLobbyDoc = availableLobbiesSnapshot.docs.find(doc => doc.data().player1Id !== auth.currentUser.uid);
+            const opponentLobbyDoc = availableLobbiesSnapshot.docs.find(doc => doc.data().player1Id !== myPlayerId);
 
             if (opponentLobbyDoc) {
                 // TÌM THẤY & THAM GIA phòng của người khác
@@ -1557,7 +1572,7 @@
                 
                 // Player O (người tham gia)
                 await updateDoc(pvpGameRef, { 
-                    player2Id: auth.currentUser.uid, 
+                    player2Id: myPlayerId, 
                     player2Name: APP.playerName 
                 });
                 infoEl.textContent = `Tham gia thành công. ${size}x${size}. Bạn là O.`;
@@ -1565,7 +1580,7 @@
             } else {
                 // KHÔNG TÌM THẤY phòng của người khác. Kiểm tra xem mình có phòng đang chờ không.
                 const myLobbyQuery = query(gameCollection,
-                    where("player1Id", "==", auth.currentUser.uid),
+                    where("player1Id", "==", myPlayerId),
                     where("player2Id", "==", null),
                     where("size", "==", size),
                     limit(1)
@@ -1588,12 +1603,12 @@
                     await setDoc(pvpGameRef, {
                         gameId: lobbyId,
                         size: size,
-                        player1Id: auth.currentUser.uid,
+                        player1Id: myPlayerId,
                         player1Name: APP.playerName,
                         player2Id: null,
                         player2Name: null,
                         board: JSON.stringify(initialBoard),
-                        turn: auth.currentUser.uid, // Player X (người tạo) đi trước
+                        turn: myPlayerId, // Player X (người tạo) đi trước
                         isOver: false,
                         createdAt: Date.now() 
                     });
@@ -1627,14 +1642,16 @@
         if (mode === 'pvp') {
             setupPvp();
         } else {
+            // Khởi tạo trạng thái AI
+            pvpState.turn = 'X'; 
             render();
         }
         
         window.GAME = { 
             destroy: () => { 
                 if(unsubscribe) unsubscribe();
-                // FIX: Add cleanup for abandoned TTT lobbies
-                if (mode === 'pvp' && pvpGameRef && pvpState.player1Id === auth.currentUser.uid && !pvpState.player2Id) {
+                // FIX: Add cleanup for abandoned TTT lobbies (Sử dụng ID cục bộ)
+                if (mode === 'pvp' && pvpGameRef && player1Id === myPlayerId && !player2Id) {
                     deleteDoc(pvpGameRef).catch(e => console.error("Lỗi xóa phòng TTT trống:", e));
                 }
             } 
@@ -2094,3 +2111,4 @@
 <script src="/_vercel/speed-insights/script.js"></script>
 </body>
 </html>
+
