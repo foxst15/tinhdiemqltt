@@ -15,6 +15,10 @@
   - MODIFIED: Quiz now shows 6 shuffled questions.
   - FIX (CRITICAL): Removed optimistic local render in Tic-Tac-Toe to prevent race conditions, ensuring UI updates only from Firestore's single source of truth.
   - FIX: PvP auto-matching logic is now more robust.
+  - NEW: Added Global Chat and In-Game PvP Chat features.
+  - OPTIMIZED: Leaderboard height limited and made scrollable. PvP Chat box height reduced.
+  - FIX (CHAT): Corrected chat message order (oldest at top, newest at bottom, Messenger style).
+  - FIX (SPAM): Prevented multiple listeners being created for Global Chat, resolving message duplication bug.
 -->
 <style>
   @keyframes background-pan {
@@ -148,14 +152,64 @@
   .overlay.visible .modal { transform: scale(1); }
   
   .modal-header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
-  .modal-body{display:flex;justify-content:center;gap:12px;flex-wrap:wrap; align-items: center; position: relative; z-index: 1; flex-direction: column;} 
+  /* CẬP NHẬT: Chia Modal body thành 2 cột (Game + Chat) cho PvP */
+  .modal-body.has-chat {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+      padding: 0;
+      width: 100%;
+      max-width: 940px;
+      margin: 10px auto;
+  }
+  @media (max-width: 768px) {
+      .modal-body.has-chat {
+          grid-template-columns: 1fr;
+          gap: 15px;
+      }
+  }
+
+  /* Container cho Game trong Modal Body */
+  .game-content-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      /* padding: 10px; */
+  }
+  
   /* Tối ưu Canvas cho mobile: Chiếm toàn bộ chiều rộng modal body */
   canvas.game-canvas{background:#000;border-radius:10px;display:block; max-width: 100%; height: auto; image-rendering: -webkit-optimize-contrast; width: 100%;}
   
   .select{padding:12px 2.5rem 12px 10px; background-position:right .7rem center; background-size:1.2em 1.2em;}
   .select option { background-color: #0f172a; color: #e6eef8;}
   .footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;color:var(--muted);font-size:13px}
-  
+
+  /* Leaderboard Optimization */
+  .leaderboard .board-wrap {
+    max-height: 220px; /* Giới hạn chiều cao hiển thị khoảng 6-7 mục */
+    overflow-y: auto; /* Thêm thanh cuộn */
+    margin-top: 10px;
+  }
+  .leaderboard table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+  }
+  .leaderboard th, .leaderboard td {
+      padding: 6px 8px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      white-space: nowrap; 
+  }
+  .leaderboard th {
+      font-size: 13px;
+      color: var(--muted);
+      position: sticky; 
+      top: 0;
+      background: #1e293b; 
+      z-index: 10;
+  }
   /* Game Specific Styles (Responsive) */
   /* TTT CSS (Được định nghĩa lại trong JS để hỗ trợ nhiều kích thước grid) */
   .ttt-cell { width: 100%; height: 100%; aspect-ratio: 1 / 1; font-size: 2.5em;} 
@@ -273,6 +327,68 @@
   /* Style cho Gemini LLM Explanation (Đã loại bỏ nhưng giữ lại .gemini-explanation để tránh lỗi nếu có) */
   .gemini-explanation {
       display: none; /* Ẩn hoàn toàn */
+  }
+
+  /* NEW CHAT STYLES */
+  .chat-box {
+      margin-top: 18px;
+  }
+  /* CẬP NHẬT: Xóa flex-direction: column-reverse để tin nhắn cũ nhất nằm ở trên cùng */
+  #globalChatMessages, #pvpChatMessages {
+      height: 250px; 
+      overflow-y: auto; 
+      display: flex; 
+      flex-direction: column; /* Đã thay đổi thành column (cũ trên, mới dưới) */
+      justify-content: flex-end; /* Đẩy nội dung xuống dưới */
+      gap: 8px; 
+      padding-right: 8px; 
+      margin-bottom: 10px; 
+      font-size: 14px; 
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      line-height: 1.4;
+  }
+  /* CẬP NHẬT: Giới hạn chiều cao chat PvP */
+  #pvpChatMessages {
+      height: 120px; /* Thu gọn */
+      overflow-y: auto; 
+      display: flex; 
+      flex-direction: column; /* Đã thay đổi thành column (cũ trên, mới dưới) */
+      justify-content: flex-end; /* Đẩy nội dung xuống dưới */
+      gap: 8px; 
+      padding-right: 8px; 
+      margin-bottom: 10px; 
+      font-size: 14px; 
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      line-height: 1.4;
+  }
+  .chat-message-row {
+      display: flex;
+      width: 100%;
+  }
+  .chat-message-row.mine {
+      justify-content: flex-end;
+  }
+  .chat-bubble {
+      max-width: 90%;
+      padding: 6px 10px;
+      border-radius: 12px;
+      line-height: 1.4;
+  }
+  .chat-bubble.mine {
+      background: var(--accent1);
+      color: #051025;
+      font-weight: 500;
+  }
+  .chat-bubble.other {
+      background: rgba(255, 255, 255, 0.1);
+      color: #e6eef8;
+  }
+  .chat-sender {
+      font-weight: 700;
+      font-size: 0.85em;
+      margin-bottom: 2px;
+      color: var(--accent3);
+      display: block;
   }
 </style>
 
@@ -485,6 +601,7 @@
             </select>
         </div>
 
+        <!-- CẬP NHẬT: Thêm giới hạn chiều cao và thanh cuộn cho Leaderboard -->
         <div class="board-wrap" id="leaderboardWrap">
           <table id="leaderboardTable">
             <thead><tr><th>#</th><th>Tên</th><th>Score</th><th>Game/ĐK</th><th>Ngày</th></tr></thead>
@@ -492,6 +609,23 @@
           </table>
         </div>
       </div>
+
+      <!-- PHẦN CHAT TOÀN CẦU (GIỮ NGUYÊN) -->
+      <div class="card chat-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div><strong>Chat Toàn Cầu</strong></div>
+        </div>
+        <!-- Container hiển thị tin nhắn -->
+        <div id="globalChatMessages">
+          <!-- Tin nhắn sẽ được thêm vào đây -->
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="globalChatInput" placeholder="Nhập tin nhắn..." style="flex: 1;"/>
+          <button class="btn" id="btnSendGlobalChat">Gửi</button>
+        </div>
+      </div>
+      <!-- KẾT THÚC PHẦN CHAT TOÀN CẦU -->
+
     </aside>
   </div>
 </div>
@@ -508,7 +642,10 @@
         <button class="ghost" id="btnExit">Thoát</button>
       </div>
     </div>
-    <div class="modal-body" id="modalBody"></div>
+    <!-- CẬP NHẬT: Thêm class has-chat để chia bố cục cho PvP games -->
+    <div class="modal-body" id="modalBody">
+      <!-- Nội dung game và chat PvP sẽ được đặt ở đây -->
+    </div>
     <div class="footer">
       <div class="muted small">Điểm sẽ được lưu khi kết thúc trò chơi</div>
       <div>
@@ -530,7 +667,7 @@
 <script type="module">
   // Import the functions you need from the SDKs you need
   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-app.js";
-  import { getFirestore, collection, query, onSnapshot, addDoc, orderBy, limit, where, getDoc, setDoc, doc, updateDoc, deleteDoc, arrayUnion, getDocs } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-firestore.js";
+  import { getFirestore, collection, query, onSnapshot, addDoc, orderBy, limit, where, getDoc, setDoc, doc, updateDoc, deleteDoc, arrayUnion, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-firestore.js";
   import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-auth.js";
   
   // Cấu hình Firebase mới của bạn
@@ -546,6 +683,7 @@
   let db;
   let auth;
   let firebaseActive = false;
+  let globalChatUnsubscribe = null; // BIẾN MỚI: Lưu trữ hàm hủy đăng ký cho Global Chat
 
   try {
     const app = initializeApp(firebaseConfig);
@@ -583,6 +721,11 @@
     // Thêm các tham chiếu cho bộ lọc Bảng xếp hạng
     const lbGameSelect = getEl('leaderboardGameSelect');
     const lbDifficultySelect = getEl('leaderboardDifficultySelect');
+    
+    // THAM CHIẾU CHO CHAT TOÀN CẦU
+    const globalChatInput = getEl('globalChatInput');
+    const btnSendGlobalChat = getEl('btnSendGlobalChat');
+    const globalChatMessagesContainer = getEl('globalChatMessages');
 
 
     // --- Core Functions ---
@@ -732,14 +875,14 @@
             conditions.push(where("difficulty", "==", selectedDifficulty));
         }
 
-        // Tạo Query với các điều kiện lọc
+        // Tạo Query với các điều kiện lọc (Sử dụng giới hạn 50 mặc định)
         let q;
         if (conditions.length === 0) {
              // Truy vấn mặc định (Không lọc), sử dụng orderBy của Firebase
             q = query(collection(db, "leaderboard"), orderBy("score", "desc"), limit(50));
         } else {
              // Nếu có lọc, KHÔNG sử dụng orderBy trong Firebase để tránh lỗi index, chỉ dùng where và limit
-             // Sau đó sắp xếp bằng JavaScript
+             // Sau đó sắp xếp bằng JavaScript (khôi phục trạng thái mặc định của file gốc)
             q = query(collection(db, "leaderboard"), ...conditions, limit(50));
         }
         
@@ -752,7 +895,7 @@
                 scores.push(doc.data());
             });
             
-            // Sắp xếp dữ liệu bằng JavaScript sau khi tải về
+            // Sắp xếp dữ liệu bằng JavaScript sau khi tải về (nếu có lọc)
             if (conditions.length > 0 || selectedGame === 'all') {
                 scores.sort((a, b) => b.score - a.score);
             }
@@ -766,7 +909,7 @@
 
     function renderLeaderboard(scores, currentUserId) {
         lbTableBody.innerHTML = '';
-        // Giới hạn hiển thị 50 kết quả đầu tiên (dù đã được limit trong truy vấn hoặc sắp xếp)
+        // Giới hạn hiển thị 50 kết quả đầu tiên (tối đa)
         scores.slice(0, 50).forEach((e, i) => {
             const nameDisplay = escapeHtml(e.name);
             const gameDiff = gameTitle(e.gameId) + (e.difficulty && e.difficulty !== 'default' ? ` (${e.difficulty.toUpperCase()})` : '');
@@ -821,6 +964,14 @@
       modalTitle.textContent = gameTitle(gameId);
       modalSubtitle.textContent = gameSubtitle(gameId) + (mode === 'pvp' ? ' (PvP - Cloud)' : ' (AI/Single Player)');
       modalPlayer.textContent = APP.playerName;
+      
+      // CẬP NHẬT: Thêm/xóa class has-chat cho modal-body
+      if (mode === 'pvp') {
+          modalBody.classList.add('has-chat');
+      } else {
+          modalBody.classList.remove('has-chat');
+      }
+      
       overlay.style.display = 'flex';
       setTimeout(() => overlay.classList.add('visible'), 10);
       modalBody.innerHTML = ''; // clear
@@ -837,7 +988,7 @@
       if(window.GAME && typeof window.GAME.destroy === 'function') try{ window.GAME.destroy(); }catch(e){}
       window.GAME = null;
       overlay.classList.remove('visible');
-      setTimeout(() => { overlay.style.display = 'none'; modalBody.innerHTML = ''; }, 300);
+      setTimeout(() => { overlay.style.display = 'none'; modalBody.innerHTML = ''; modalBody.classList.remove('has-chat'); }, 300); // Đảm bảo xóa class
       APP.currentGame = null;
     }
 
@@ -874,6 +1025,105 @@
       }
     }
     
+    // --- Global Chat Implementation (MỚI) ---
+    function setupGlobalChat() {
+        if (!firebaseActive) {
+            const chatBox = document.querySelector('.chat-box');
+            if(chatBox) chatBox.style.display = 'none';
+            return;
+        }
+        
+        // FIX LỖI SPAM LISTENER: Hủy đăng ký listener cũ nếu có
+        if (globalChatUnsubscribe) {
+            globalChatUnsubscribe();
+            globalChatUnsubscribe = null;
+        }
+
+        const chatRef = collection(db, "global_chat");
+        // SỬA: Sắp xếp theo thứ tự cũ nhất lên đầu (asc)
+        const chatQuery = query(chatRef, orderBy("createdAt", "asc"), limit(50));
+
+        globalChatUnsubscribe = onSnapshot(chatQuery, (querySnapshot) => {
+            let messages = [];
+            querySnapshot.forEach((doc) => {
+                messages.push(doc.data()); 
+            });
+            renderChatMessages(globalChatMessagesContainer, messages);
+        }, (error) => {
+            console.error("Firebase global chat snapshot error:", error);
+        });
+
+        btnSendGlobalChat.addEventListener('click', () => sendChatMessage(globalChatInput, "global_chat"));
+        globalChatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                sendChatMessage(globalChatInput, "global_chat");
+            }
+        });
+    }
+
+    // Hàm gửi tin nhắn chung (dùng cho cả Global và PvP)
+    async function sendChatMessage(inputElement, collectionPath, lobbyId = null) {
+        if (!APP.playerName) {
+            showAlert('Vui lòng nhập tên để chat.');
+            return;
+        }
+        const messageText = inputElement.value.trim();
+        if (messageText === '' || !auth.currentUser) return;
+        
+        try {
+            // Tạm thời disable input để ngăn gửi spam
+            inputElement.disabled = true;
+            
+            const path = lobbyId ? `${collectionPath}/${lobbyId}/chats` : collectionPath;
+            await addDoc(collection(db, path), {
+                sender: APP.playerName,
+                message: messageText,
+                createdAt: serverTimestamp(),
+                userId: auth.currentUser.uid 
+            });
+            inputElement.value = '';
+        } catch (e) {
+            console.error("Lỗi gửi tin nhắn:", e);
+            showAlert('Lỗi khi gửi tin nhắn. Vui lòng kiểm tra Rules.');
+        } finally {
+            // Re-enable input element
+            inputElement.disabled = false;
+            // Focus lại input để người dùng có thể gõ tiếp
+            inputElement.focus();
+        }
+    }
+
+    function renderChatMessages(container, messages) {
+        container.innerHTML = '';
+        const currentUserId = auth.currentUser ? auth.currentUser.uid : null;
+        
+        messages.forEach(msg => {
+            // Sửa lỗi: Đảm bảo msg.createdAt đã được xử lý hoặc có fallback
+            const senderName = escapeHtml(msg.sender || 'Ẩn danh');
+            const messageContent = escapeHtml(msg.message || '');
+            const isMine = currentUserId && msg.userId === currentUserId;
+
+            const msgRow = document.createElement('div');
+            msgRow.className = `chat-message-row ${isMine ? 'mine' : 'other'}`;
+            
+            const msgBubble = document.createElement('div');
+            msgBubble.className = `chat-bubble ${isMine ? 'mine' : 'other'}`;
+            
+            if (!isMine) {
+                 msgBubble.innerHTML = `<span class="chat-sender">${senderName}</span>${messageContent}`;
+            } else {
+                 msgBubble.textContent = messageContent;
+            }
+            
+            msgRow.appendChild(msgBubble);
+            container.appendChild(msgRow);
+        });
+        // Cuộn xuống dưới cùng để xem tin nhắn mới nhất
+        container.scrollTop = container.scrollHeight;
+    }
+    // --- End Global Chat Implementation ---
+
+
     // --- Event Listeners Setup ---
     function setupEventListeners() {
         btnStart.addEventListener('click', ()=>{
@@ -885,6 +1135,8 @@
           // KHÔI PHỤC: Lưu tên người chơi cục bộ
           localStorage.setItem('sg_hub_player_name', v);
           showAlert('Tên đã lưu: ' + v);
+          // Cập nhật chat
+          if (firebaseActive) setupGlobalChat();
         });
         btnClear.addEventListener('click', ()=>{ 
           playerInput.value = ''; 
@@ -928,411 +1180,82 @@
         setupLeaderboardListeners();
     }
     
-    // --- 1) Quiz Implementation ---
-    function initQuiz(container, mode){
-        const difficulty = getEl('quizDifficulty').value;
-        // Chỉ lấy 6 câu hỏi, luôn xáo trộn
-        const NUM_QUESTIONS = 6; 
-        const timePerQuestion = difficulty==='easy'?18: (difficulty==='normal'?12:8);
-        
-        // --- 50 Câu hỏi Quiz ---
-        const allQuestions = [
-            {q:'Thủ đô của Việt Nam là?', a:'Hà Nội', opts:['Hà Nội','Hồ Chí Minh','Đà Nẵng','Hải Phòng']},
-            {q:'2 + 3 = ?', a:'5', opts:['4','5','6','3']},
-            {q:'Mặt trời mọc ở hướng nào?', a:'Đông', opts:['Tây','Đông','Nam','Bắc']},
-            {q:'Việt Nam thuộc châu lục nào?', a:'Á', opts:['Âu','Mỹ','Phi','Á']},
-            {q:'Hình vuông có bao nhiêu cạnh?', a:'4', opts:['3','4','5','6']},
-            {q:'Tháng nào có 28 ngày?', a:'Tháng Hai', opts:['Tháng Giêng','Tháng Hai','Tháng Ba','Tháng Tư']},
-            {q:'Ai là người tìm ra thuyết tương đối?', a:'Albert Einstein', opts:['Isaac Newton','Galileo Galilei','Albert Einstein','Stephen Hawking']}, 
-            {q:'Con gì sống dưới nước và có vảy?', a:'Cá', opts:['Gà','Mèo','Cá','Chó']}, 
-            {q:'Nguyên tố hóa học nào có ký hiệu là O?', a:'Oxy', opts:['Oxy','Nitơ','Cacbon','Hiđro']}, 
-            {q:'Năm 2025 thuộc thế kỷ nào?', a:'XXI', opts:['XIX','XX','XXI','XXII']},
-            {q:'Ai là tác giả của Truyện Kiều?', a:'Nguyễn Du', opts:['Hồ Xuân Hương','Nguyễn Trãi','Nguyễn Du','Cao Bá Quát']},
-            {q:'Thực vật hô hấp bằng gì?', a:'Lá', opts:['Rễ','Thân','Lá','Hoa']},
-            {q:'Núi cao nhất Việt Nam?', a:'Fansipan', opts:['Bạch Mã','Fansipan','Chư Đăng Ya','Langbiang']},
-            {q:'Cây thuộc họ lúa?', a:'Mía', opts:['Bắp cải','Mía','Cà chua','Cà phê']},
-            {q:'Lục địa lớn nhất thế giới?', a:'Châu Á', opts:['Châu Phi','Châu Âu','Châu Mỹ','Châu Á']},
-            {q:'Quốc khánh Việt Nam là ngày nào?', a:'2/9', opts:['30/4','1/5','2/9','19/8']},
-            {q:'Đơn vị đo cường độ dòng điện?', a:'Ampere', opts:['Volt','Ohm','Watt','Ampere']},
-            {q:'1km bằng bao nhiêu mét?', a:'1000', opts:['10','100','1000','10000']},
-            {q:'Tỉnh có diện tích lớn nhất Việt Nam?', a:'Nghệ An', opts:['Đắk Lắk','Thanh Hóa','Nghệ An','Sơn La']},
-            {q:'Thành phần chính của không khí?', a:'Nitơ', opts:['Oxy','Cacbon','Nitơ','Hiđro']},
-            {q:'Tác giả ' + 'Bình Ngô Đại Cáo' + '?', a:'Nguyễn Trãi', opts:['Nguyễn Du','Hồ Chí Minh','Nguyễn Trãi','Lê Lợi']},
-            {q:'Hành tinh nào gần Mặt Trời nhất?', a:'Sao Thủy', opts:['Sao Hỏa','Sao Kim','Sao Thủy','Sao Mộc']},
-            {q:'Nước nào có hình chiếc ủng?', a:'Ý', opts:['Pháp','Ý','Đức','Tây Ban Nha']},
-            {q:'Con vật có thể xoay đầu 270 độ?', a:'Cú', opts:['Hươu cao cổ','Đại bàng','Cú','Gấu']},
-            {q:'Màu cơ bản trong hội họa?', a:'Đỏ, Vàng, Xanh dương', opts:['Đỏ, Xanh lá, Xanh dương','Đỏ, Vàng, Xanh dương','Đen, Trắng, Xám','Hồng, Cam, Tím']},
-            {q:'Kim loại nhẹ nhất?', a:'Lithium', opts:['Sắt','Vàng','Lithium','Nhôm']},
-            {q:'Quốc hoa của Việt Nam?', a:'Hoa Sen', opts:['Hoa Mai','Hoa Đào','Hoa Sen','Hoa Hồng']},
-            {q:'Thể tích hình hộp chữ nhật được tính bằng?', a:'dài x rộng x cao', opts:['dài + rộng + cao','dài x rộng x cao','2 x (dài + rộng)','dài x rộng']},
-            {q:'Trong bóng đá, 1 trận có bao nhiêu hiệp?', a:'2', opts:['1','2','3','4']},
-            {q:'Ai là Chủ tịch Hồ Chí Minh?', a:'Hồ Chí Minh', opts:['Hồ Chí Minh','Võ Nguyên Giáp','Phạm Văn Đồng','Trần Đại Quang']},
-            {q:'Cơ quan lớn nhất trong cơ thể người?', a:'Da', opts:['Gan','Phổi','Tim','Da']},
-            {q:'Sông dài nhất Việt Nam?', a:'Sông Đồng Nai', opts:['Sông Hồng','Sông Đồng Nai','Sông Mê Kông','Sông Đà']},
-            {q:'Hình tam giác có tổng góc bằng bao nhiêu độ?', a:'180', opts:['90','180','270','360']},
-            {q:'1 đô la Mỹ bằng bao nhiêu cent?', a:'100', opts:['10','50','100','1000']},
-            {q:'Chất lỏng dẫn điện tốt nhất?', a:'Nước muối', opts:['Nước tinh khiết','Dầu ăn','Nước muối','Cồn']},
-            {q:'Tác giả bài hát Tiến Quân Ca?', a:'Văn Cao', opts:['Văn Cao','Phạm Tuyên','Trần Hoàn','Hoàng Vân']},
-            {q:'Khí quyển Trái Đất có mấy tầng chính?', a:'5', opts:['3','4','5','6']},
-            {q:'Loài cá bay được?', a:'Cá chuồn', opts:['Cá mập','Cá chuồn','Cá voi','Cá hồi']},
-            {q:'Đơn vị tiền tệ của Nhật Bản?', a:'Yên', opts:['Won','Nhân dân tệ','Yên','Đô la']},
-            {q:'Vật liệu cứng nhất trên Trái Đất?', a:'Kim cương', opts:['Kim cương','Thép','Gỗ','Thủy tinh']},
-            {q:'Bác Hồ ra đi tìm đường cứu nước năm nào?', a:'1911', opts:['1930','1945','1911','1954']},
-            {q:'Bán kính Trái Đất xấp xỉ bao nhiêu km?', a:'6371', opts:['1200','3500','6371','10000']},
-            {q:'Ngôn ngữ lập trình phổ biến nhất?', a:'JavaScript', opts:['Java','C++','Python','JavaScript']},
-            {q:'Công thức hóa học của nước?', a:'H₂O', opts:['CO₂','H₂O','O₂','NaCl']},
-            {q:'Loại năng lượng không thể tái tạo?', a:'Than đá', opts:['Mặt trời','Gió','Nước','Than đá']},
-            {q:'Ai là người đầu tiên đặt chân lên Mặt Trăng?', a:'Neil Armstrong', opts:['Buzz Aldrin','Yuri Gagarin','Neil Armstrong','Alan Shepard']},
-            {q:'Môn học nghiên cứu về sự sống?', a:'Sinh học', opts:['Vật lý','Hóa học','Toán học','Sinh học']},
-            {q:'Tên gọi khác của bệnh sốt rét?', a:'Sốt rét', opts:['Sốt xuất huyết','Sốt rét','Cảm cúm','Sởi']},
-            {q:'Tổ chức Liên Hợp Quốc được thành lập năm nào?', a:'1945', opts:['1918','1945','1954','1989']},
-            {q:'Món ăn truyền thống nổi tiếng nhất Việt Nam?', a:'Phở', opts:['Bún chả','Phở','Bánh mì','Gỏi cuốn']},
-            {q:'Đơn vị đo tần số?', a:'Hertz', opts:['Volt','Ohm','Hertz','Joule']},
-        ];
-        // --- End 50 Câu hỏi Quiz ---
-
-        // Xáo trộn và chỉ lấy 6 câu
-        const qs = Utils.shuffleArray(allQuestions).slice(0, NUM_QUESTIONS);
-
-        let idx=0, score=0, timeLeft=timePerQuestion;
-        
-        const root = document.createElement('div');
-        root.style.width = '100%';
-        // Bố cục Quiz được điều chỉnh để hiển thị tốt trên mobile
-        root.innerHTML = `<div id="qWrap" style="margin-top:8px;"></div><div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center; flex-wrap: wrap; gap: 8px;"><div class="muted">Time left: <span id="qTime">${timeLeft}</span>s</div><div>Score: <span id="qScore">${score}</span></div></div>`;
-        container.appendChild(root);
-
-        function renderQuestion(){
-          const qWrap = root.querySelector('#qWrap'); qWrap.innerHTML = '';
-          if(idx>=qs.length){ finishQuiz(); return; }
-          const item = qs[idx];
-          const qDiv = document.createElement('div');
-          qDiv.innerHTML = `<div style="font-weight:700;margin-bottom:10px; font-size: 1.1em;">Q${idx+1} (${idx+1}/${NUM_QUESTIONS}). ${item.q}</div><div style="display:flex; flex-wrap: wrap; gap: 8px;"></div>`;
-          const optionsDiv = qDiv.querySelector('div:last-child');
-          
-          item.opts.forEach(opt=>{
-            const b=document.createElement('button'); 
-            b.className='btn'; 
-            b.style.padding='12px 16px'; // Tăng kích thước nút cho touch
-            b.style.flexGrow = 1;
-            b.textContent=opt; 
-            b.onclick=()=>{ 
-              if(opt===item.a) score += 150 + timeLeft*5; 
-              idx++; 
-              timeLeft = timePerQuestion; 
-              root.querySelector('#qScore').textContent = score; 
-              renderQuestion(); 
-            };
-            optionsDiv.appendChild(b);
-          });
-          qWrap.appendChild(qDiv);
-        }
-
-        renderQuestion();
-        let timer = setInterval(()=>{ 
-            timeLeft--; 
-            const el=root.querySelector('#qTime'); 
-            if(el) el.textContent=timeLeft; 
-            if(timeLeft<=0){ 
-                idx++; 
-                timeLeft=timePerQuestion; 
-                if(idx>=qs.length) finishQuiz(); 
-                else renderQuestion(); 
-            } 
-        }, 1000);
-        
-        window.GAME = { destroy(){ clearInterval(timer); } };
-        
-        async function finishQuiz(){
-          clearInterval(timer);
-          
-          const resultContent = `
-              <div style="text-align:center; width: 100%;">
-                  <h3 style="color: var(--accent1);">Quiz kết thúc!</h3>
-                  <p style="font-size: 1.5em; font-weight: bold;">Điểm của bạn: ${score}</p>
-                  <!-- Loại bỏ nút giải thích AI -->
-              </div>
-          `;
-          
-          // Thay thế body modal bằng kết quả
-          modalBody.innerHTML = resultContent;
-          
-          // Đảm bảo nút Thoát vẫn hoạt động sau khi hiển thị kết quả
-          pushScore(APP.playerName, score, 'quiz');
-        }
-    }
-
-    // --- 2) Memory Implementation (FIXED: Added game logic back) ---
-    function initMemory(container, mode){
-        const difficulty = getEl('memoryDifficulty').value;
-        const pairs = difficulty==='easy'?6: (difficulty==='normal'?8:10);
-        // Implement PvP here if needed, current is AI/single player logic
-        const fruits = ['🍎', '🍌', '🍇', '🍓', '🍒', '🍑', '🍍', '🥝', '🍉', '🥭', '🥥', '🥑'].slice(0, pairs);
-        const cards = Utils.shuffleArray([...fruits, ...fruits]);
-        let flipped = [], matched = new Set(), moves=0, lockBoard = false;
-        const grid = document.createElement('div'); 
-        grid.className = 'memory-grid';
-        
-        // FIXED: Đảm bảo grid column đúng cho 6, 8, 10 cặp
-        let columns = 4;
-        if (pairs === 10) columns = 5;
-        grid.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
-
-        container.appendChild(grid);
-        
-        cards.forEach((s,i)=>{
-          const c=document.createElement('div'); 
-          c.className = 'memory-card';
-          c.textContent=s; 
-          c.dataset.index=i; 
-          c.onclick=()=>flip(i);
-          grid.appendChild(c);
-        });
-        
-        const info = document.createElement('div'); info.className='muted small'; info.style.width='100%'; info.style.textAlign='center'; info.style.marginTop='10px'; info.textContent='Moves: 0'; container.appendChild(info);
-        
-        function flip(i){
-          if(lockBoard || flipped.includes(i) || matched.has(i)) return;
-          const cardEl = grid.children[i];
-          flipped.push(i);
-          cardEl.classList.add('flipped');
-          // cardEl.style.color = '#031226'; // Đã dùng CSS class
-
-          if(flipped.length===2){
-            moves++; info.textContent='Moves: '+moves; lockBoard = true;
-            const [idx1, idx2] = flipped;
-            if(cards[idx1]===cards[idx2]){ 
-              matched.add(idx1); matched.add(idx2); 
-              grid.children[idx1].classList.add('matched');
-              grid.children[idx2].classList.add('matched');
-              grid.children[idx1].classList.remove('flipped');
-              grid.children[idx2].classList.remove('flipped');
-              flipped=[]; lockBoard=false; 
-              if(matched.size===cards.length) finishMem(); 
-            } else { 
-              setTimeout(()=>{ 
-                grid.children[idx1].classList.remove('flipped');
-                grid.children[idx2].classList.remove('flipped');
-                // grid.children[idx1].style.color = 'transparent'; // Đã dùng CSS class
-                // grid.children[idx2].style.color = 'transparent'; // Đã dùng CSS class
-                flipped=[]; lockBoard=false;
-              }, 800); 
-            }
-          }
-        }
-        
-        function finishMem(){ 
-          const score = Math.max(0, 5000 - moves*50); 
-          showAlert('Hoàn thành! Điểm: '+score, () => {pushScore(APP.playerName, score, 'memory'); closeGame();}); 
-        }
-        window.GAME = { destroy(){} };
-    }
-
-    // --- 3) Click Speed Implementation ---
-    function initClickSpeed(container, mode){
-        const duration = parseInt(getEl('clickDuration').value,10) || 10;
-        // Implement PvP here if needed, current is AI/single player logic
-        let running=false, timeLeft=duration, count=0, timer=null;
-        const root=document.createElement('div'); root.innerHTML = `<div style="display:flex;gap:12px;align-items:center; flex-wrap: wrap;"><div><strong>Time:</strong> <span id="csTime">${timeLeft}</span>s</div><div><strong>Clicks:</strong> <span id="csCount">${count}</span></div></div><div style="margin-top:10px; display:flex; gap: 10px;"><button class="btn" id="csStart">Bắt đầu</button> <button class="ghost" id="csReset">Reset</button></div><div style="margin-top:14px"><button class="btn" id="csTap" style="font-size:20px;padding:28px 40px; width: 100%;">NHẤP!</button></div>`;
-        container.appendChild(root);
-        const elTime = root.querySelector('#csTime'), elCount = root.querySelector('#csCount');
-        root.querySelector('#csStart').onclick = ()=>{
-          if(running) return;
-          running=true; count=0; timeLeft=duration; elTime.textContent=timeLeft; elCount.textContent=count;
-          timer = setInterval(()=>{ timeLeft--; elTime.textContent=timeLeft; if(timeLeft<=0){ clearInterval(timer); running=false; const score = count; showAlert('Hết giờ! Clicks: '+count, () => {pushScore(APP.playerName, score, 'clickspeed'); closeGame();}); } },1000);
-        };
-        root.querySelector('#csTap').onclick = ()=>{ if(!running) return; count++; elCount.textContent=count; };
-        root.querySelector('#csReset').onclick = ()=>{ clearInterval(timer); running=false; timeLeft=duration; count=0; elTime.textContent=timeLeft; elCount.textContent=count; };
-        window.GAME = { destroy(){ if(timer) clearInterval(timer); } };
-    }
-    
-    // --- 4) Snake Implementation ---
-    function initSnake(container, mode){
-      const difficulty = getEl('snakeDifficulty').value;
-      const speed = difficulty==='easy'?160: (difficulty==='normal'?110:70);
-      const cw = 20, cols = 20, rows = 15;
-      
-      let canvas = document.createElement('canvas'); 
-      canvas.width = cols*cw; canvas.height = rows*cw; 
-      canvas.className='game-canvas'; 
-      canvas.style.width = '100%'; canvas.style.maxWidth = `${cols * cw}px`;
-      container.appendChild(canvas);
-      
-      let ctx = canvas.getContext('2d');
-      let snake = [{x:3,y:7},{x:2,y:7},{x:1,y:7}], dir='right', food=randomFood(), score=0;
-      let tick=null; draw();
-      
-      function randomFood(){ let p; do{ p={x:Math.floor(Math.random()*cols), y:Math.floor(Math.random()*rows)} } while(snake.some(s=>s.x===p.x && s.y===p.y)); return p; }
-      function draw(){ ctx.fillStyle='#061022'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle='#ff4d6d'; ctx.fillRect(food.x*cw+2, food.y*cw+2, cw-4, cw-4); snake.forEach((s,i)=>{ ctx.fillStyle = i===0 ? '#ffd36e' : '#7df9ff'; ctx.fillRect(s.x*cw+1, s.y*cw+1, cw-2, cw-2); }); ctx.fillStyle='#fff'; ctx.font='14px Inter'; ctx.fillText('Score: '+score, 8, 16); }
-      function step(){
-        const head = {...snake[0]};
-        if(dir==='right') head.x++; if(dir==='left') head.x--; if(dir==='up') head.y--; if(dir==='down') head.y++;
-        if(head.x<0||head.y<0||head.x>=cols||head.y>=rows||snake.some(s=>s.x===head.x && s.y===head.y)){
-          clearInterval(tick); showAlert('Game Over! Score: '+score, () => {pushScore(APP.playerName, score, 'snake'); closeGame();}); return;
-        }
-        snake.unshift(head);
-        if(head.x===food.x && head.y===food.y){ score+=10; food=randomFood(); }
-        else snake.pop();
-        draw();
-      }
-      const onKey = (e) => {
-          if(e.key==='ArrowUp' && dir!=='down') dir='up';
-          if(e.key==='ArrowDown' && dir!=='up') dir='down';
-          if(e.key==='ArrowLeft' && dir!=='right') dir='left';
-          if(e.key==='ArrowRight' && dir!=='left') dir='right';
-      };
-      document.addEventListener('keydown', onKey);
-      tick = setInterval(step, speed);
-      window.GAME = { destroy(){ clearInterval(tick); document.removeEventListener('keydown', onKey); } };
-    }
-
-    /* 5) Flappy mini Implementation - FIXED: Logic to prevent immediate game over */
-    function initFlappy(container, mode){
-      const diff = getEl('flappyDifficulty').value;
-      const gravity = diff==='easy'?0.45: (diff==='normal'?0.6:0.8);
-      const pipeSpeed = diff==='easy'?2: (diff==='normal'?3:4);
-      const canvas = document.createElement('canvas'); canvas.width=420; canvas.height=420; canvas.className='game-canvas'; 
-      canvas.style.width = '100%'; canvas.style.maxWidth = `420px`; // Giữ tỷ lệ
-      container.appendChild(canvas);
-      
-      const ctx = canvas.getContext('2d');
-      let y = canvas.height / 2, vy=0, pipes=[], score=0; // Bắt đầu ở giữa
-      let tick = setInterval(loop, 30);
-      
-      // Tạo ống đầu tiên xa hơn để tránh chết ngay lập tức
-      pipes.push({x: canvas.width * 1.5, top: 150, gap: 100, scored: false});
-
-      function loop(){
-        vy += gravity; y += vy;
-        
-        // Sinh ống
-        if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width * 0.5) {
-            pipes.push({x: canvas.width, top: 60 + Math.random()*180, gap: 100, scored: false});
-        }
-        
-        pipes.forEach(p=> p.x -= pipeSpeed); 
-        pipes = pipes.filter(p => p.x > -80);
-        
-        const birdRect = {x:50, y, w:30, h:22};
-        
-        for(let p of pipes){
-          // Kiểm tra va chạm
-          if(birdRect.x < p.x + 60 && birdRect.x + birdRect.w > p.x) {
-              if(birdRect.y < p.top || birdRect.y + birdRect.h > p.top + p.gap) { 
-                  gameOver(); return; 
-              }
-          }
-          // Ghi điểm
-          if(!p.scored && p.x + 60 < 50){ 
-              score++; p.scored=true; 
-          }
-        }
-        // Kiểm tra chạm đất/trần
-        if(y > canvas.height - 22 || y < 0) { gameOver(); return; }
-        draw();
-      }
-      
-      function draw(){
-        ctx.fillStyle='#72c3ff'; ctx.fillRect(0,0,canvas.width,canvas.height);
-        // Draw Ground
-        ctx.fillStyle='#0a0'; ctx.fillRect(0, canvas.height - 10, canvas.width, 10);
-        
-        pipes.forEach(p=>{ ctx.fillStyle='#0b3'; ctx.fillRect(p.x,0,60,p.top); ctx.fillRect(p.x,p.top + p.gap,60,canvas.height - (p.top + p.gap)); });
-        ctx.fillStyle='#ffea7f'; ctx.fillRect(50, y, 30, 22);
-        ctx.fillStyle='#000'; ctx.fillText('Score: '+score, 10, 20);
-      }
-      function flap(){ vy = -8; }
-      function gameOver() { clearInterval(tick); showAlert('Game Over! Score: '+score, () => { pushScore(APP.playerName, score, 'flappy'); closeGame(); }); }
-      const keyHandler = (e)=>{ if(e.key===' ') flap(); };
-      document.addEventListener('keydown', keyHandler);
-      container.addEventListener('click', () => flap());
-      window.GAME = { destroy(){ clearInterval(tick); document.removeEventListener('keydown', keyHandler); } };
-    }
-
-    /* 6) 2048 Implementation (FIXED: Added missing rotate function) */
-    function init2048(container, mode){
-        let grid = newGrid(), score=0;
-        // Implement PvP here if needed, current is AI/single player logic
-        container.innerHTML = '<div><strong>2048</strong><div class="muted small">Use arrow keys to move</div></div>';
-        const board = document.createElement('div'); 
-        board.className = 'board2048';
-        container.appendChild(board);
-        const scoreEl = document.createElement('div'); scoreEl.className='muted small'; scoreEl.textContent='Score: 0'; container.appendChild(scoreEl);
-        renderGrid();
-        
-        function newGrid(){ const g=Array.from({length:4},()=>Array(4).fill(0)); randomTile(g); randomTile(g); return g; }
-        function randomTile(g){
-          const empt=[]; for(let r=0;r<4;r++) for(let c=0;c<4;c++) if(!g[r][c]) empt.push([r,c]);
-          if(empt.length===0) return; const [r,c] = empt[Math.floor(Math.random()*empt.length)]; g[r][c] = Math.random()<0.9?2:4;
-        }
-        function renderGrid(){
-          board.innerHTML=''; grid.flat().forEach(v=>{ const el=document.createElement('div'); el.className = 'tile2048'; el.textContent = v||''; el.style.backgroundColor = `rgba(255,255,255,${Math.log2(v||1)*0.05})`; board.appendChild(el); });
-          scoreEl.textContent = 'Score: '+score;
-        }
-        function move(dir){
-          const old = JSON.stringify(grid);
-          let g=grid.map(r=>r.slice()), gained=0;
-          for(let i=0;i<dirSteps(dir);i++) g=rotate(g);
-          for(let r=0;r<4;r++){
-            let row = g[r].filter(v=>v); for(let i=0;i<row.length-1;i++) if(row[i]===row[i+1]){ row[i]*=2; gained += row[i]; row.splice(i+1,1); }
-            while(row.length<4) row.push(0); g[r]=row;
-          }
-          for(let i=0;i<(4-dirSteps(dir)) % 4;i++) g=rotate(g);
-          if(JSON.stringify(g)!==old){ randomTile(g); grid=g; score+=gained; renderGrid(); if(checkWin(grid)){ showAlert('Bạn thắng! Score: '+score, () => {pushScore(APP.playerName, score, '2048'); closeGame();}); } }
-        }
-        function dirSteps(dir){ if(dir==='left') return 0; if(dir==='up') return 1; if(dir==='right') return 2; if(dir==='down') return 3; }
-        function rotate(m){ 
-            // Hàm xoay ma trận 90 độ (cần thiết cho 2048)
-            const n=Array.from({length:4},()=>Array(4).fill(0)); 
-            for(let r=0;r<4;r++) for(let c=0;c<4;c++) n[r][c]=m[3-c][r]; 
-            return n; 
-        }
-        function checkWin(g){ return g.some(r=>r.some(c=>c>=2048)); }
-        const onKey = e => { if(e.key.includes('Arrow')) move(e.key.replace('Arrow','').toLowerCase()); };
-        document.addEventListener('keydown', onKey);
-        window.GAME = { destroy(){ document.removeEventListener('keydown', onKey); } };
-    }
-    
-    // --- 7) Tic-Tac-Toe Implementation ---
+    // --- 7) Tic-Tac-Toe Implementation (Bổ sung Chat) ---
     function initTicTacToe(container, mode) {
+        // Tạo container chính cho Game và Chat
+        const gameContainer = document.createElement('div');
+        gameContainer.className = 'game-content-container';
+        gameContainer.style.width = mode === 'pvp' ? '100%' : 'auto'; // Cho phép game mở rộng trong cột 1
+        
+        // ... (Giữ nguyên các biến và logic TTT)
         const size = parseInt(getEl('tictactoeSize').value, 10);
         const boardSize = size * size;
-        const WIN_CONDITION = 3; // Thắng khi 3 ô liên tiếp (đơn giản hóa)
+        const WIN_CONDITION = 3; 
         let board = Array(boardSize).fill(null);
         let gameOver = false;
         let pvpGameRef = null;
         let unsubscribe = null;
+        let unsubscribeChat = null; // Biến mới cho Chat PvP
         
-        // Thêm biến ID người chơi cục bộ để dễ quản lý trong phòng PvP
         let myPlayerId = auth.currentUser.uid;
         let player1Id = null; 
         let player2Id = null;
 
         const boardEl = document.createElement('div');
-        // FIXED: Apply CSS directly using parameters for multi-grid support
         boardEl.style.cssText = `
             display: grid; 
             grid-template-columns: repeat(${size}, 1fr); 
             gap: ${size > 6 ? '4px' : '8px'}; 
             max-width: ${size * 50}px; 
-            margin: 15px auto;
+            margin: 15px auto 10px;
             width: 100%;
         `;
-        container.appendChild(boardEl);
+        gameContainer.appendChild(boardEl);
         
         const infoEl = document.createElement('div');
         infoEl.style.width = '100%';
-        infoEl.style.marginTop = '15px';
+        infoEl.style.marginTop = '5px';
         infoEl.style.textAlign = 'center';
-        container.appendChild(infoEl);
+        gameContainer.appendChild(infoEl);
+        
+        container.appendChild(gameContainer); // Thêm game container vào modal body
+
+        let chatContainer = null;
+        let chatInput = null;
+
+        if (mode === 'pvp') {
+            // Khởi tạo container cho Chat PvP (đặt ngoài gameContainer để nó nằm ở cột 2)
+            chatContainer = document.createElement('div');
+            chatContainer.style.width = '100%';
+            chatContainer.innerHTML = `
+                <div class="card" style="padding:10px 15px; margin-top: 0;">
+                    <div style="font-weight:700; margin-bottom: 5px;">Chat Phòng (${size}x${size})</div>
+                    <div id="pvpChatMessages" style="height: 120px; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; padding-right: 8px; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);"></div>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="pvpChatInput" placeholder="Nhắn tin..." style="flex: 1; padding: 8px;"/>
+                        <button class="btn" id="btnSendPvpChat" style="padding: 8px 12px;">Gửi</button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(chatContainer);
+            chatInput = chatContainer.querySelector('#pvpChatInput');
+            const btnSendPvpChat = chatContainer.querySelector('#btnSendPvpChat');
+            
+            btnSendPvpChat.addEventListener('click', () => {
+                if (pvpGameRef) sendChatMessage(chatInput, "tictactoe_lobbies", pvpGameRef.id);
+            });
+            chatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && pvpGameRef) {
+                    sendChatMessage(chatInput, "tictactoe_lobbies", pvpGameRef.id);
+                }
+            });
+        }
         
         let pvpState = {}; 
 
-        function checkWinner() {
-            // Kiểm tra chiến thắng (3 ô liên tiếp, hoặc 4 ô nếu game lớn hơn)
-            const winLength = WIN_CONDITION; // Giữ 3 ô liên tiếp cho tất cả các kích thước
+        function checkWinner() { /* ... Giữ nguyên checkWinner ... */
+            const winLength = WIN_CONDITION; 
             
-            // 1. Kiểm tra hàng ngang (rows)
             for (let r = 0; r < size; r++) {
                 for (let c = 0; c <= size - winLength; c++) {
                     const mark = board[r * size + c];
@@ -1345,7 +1268,6 @@
                 }
             }
             
-            // 2. Kiểm tra hàng dọc (columns)
             for (let c = 0; c < size; c++) {
                 for (let r = 0; r <= size - winLength; r++) {
                     const mark = board[r * size + c];
@@ -1358,7 +1280,6 @@
                 }
             }
 
-            // 3. Kiểm tra đường chéo chính (\)
             for (let r = 0; r <= size - winLength; r++) {
                 for (let c = 0; c <= size - winLength; c++) {
                     const mark = board[r * size + c];
@@ -1371,7 +1292,6 @@
                 }
             }
             
-            // 4. Kiểm tra đường chéo phụ (/)
             for (let r = 0; r <= size - winLength; r++) {
                 for (let c = winLength - 1; c < size; c++) {
                     const mark = board[r * size + c];
@@ -1384,11 +1304,10 @@
                 }
             }
 
-            // Hòa
             return board.includes(null) ? null : 'Tie';
         }
         
-        function checkEndState(isPvp) {
+        function checkEndState(isPvp) { /* ... Giữ nguyên checkEndState ... */
             const winner = checkWinner();
             if (winner) {
                 gameOver = true;
@@ -1402,7 +1321,6 @@
                         closeGame();
                     });
                 } else if (pvpGameRef) {
-                    // Cập nhật trạng thái chiến thắng lên cloud (PvP)
                     updateDoc(pvpGameRef, { winner: winner, isOver: true });
                 }
                 return true;
@@ -1410,8 +1328,7 @@
             return false;
         }
 
-        function handleClick(index) {
-            // Check nếu game over, hoặc ô đã có người đánh
+        function handleClick(index) { /* ... Giữ nguyên handleClick ... */
             if (gameOver || board[index]) return;
             
             if (mode === 'ai') {
@@ -1421,15 +1338,11 @@
                 render();
                 if(!checkEndState(false)) setTimeout(aiMove, 500);
             } else if (mode === 'pvp' && pvpGameRef) {
-                // The primary guardrail is now the onclick assignment in `render`.
-                // This function should only be callable if it's the player's turn.
-                // However, we add a secondary check for game readiness to prevent race conditions.
                 if (!pvpState.player1Id || !pvpState.player2Id) {
                     showAlert('Vui lòng chờ người chơi thứ 2 tham gia để bắt đầu.');
                     return;
                 }
                 
-                // Check again right before the move, just in case of a race condition.
                 if (myPlayerId !== pvpState.turn) {
                     console.warn("Move blocked: Not your turn according to the latest state.");
                     return;
@@ -1437,21 +1350,17 @@
                 
                  const playerMark = myPlayerId === pvpState.player1Id ? 'X' : 'O';
                  board[index] = playerMark;
-                 // render(pvpState); // REMOVED: This was causing the issue by re-rendering with old state. onSnapshot will handle rendering.
                  
-                 // SỬA LỖI: Logic chuyển lượt (dùng ID đã xác định)
                  const nextTurnId = (myPlayerId === pvpState.player1Id) 
                                     ? pvpState.player2Id 
                                     : pvpState.player1Id;
 
-                 // Final guardrail before updating Firestore.
                  if (!nextTurnId) {
                      console.error("CRITICAL ERROR: nextTurnId is invalid!", nextTurnId, "State:", pvpState);
                      showAlert("Lỗi nghiêm trọng: Không thể xác định lượt đi tiếp theo.");
                      return;
                  }
 
-                 // Đẩy lên Cloud
                  updateDoc(pvpGameRef, { 
                     board: JSON.stringify(board), 
                     turn: nextTurnId 
@@ -1464,7 +1373,7 @@
             }
         }
         
-        function aiMove() {
+        function aiMove() { /* ... Giữ nguyên aiMove ... */
             let emptyCells = board.map((v, i) => v === null ? i : null).filter(v => v !== null);
             if (emptyCells.length === 0) return;
             let move = emptyCells[Math.floor(Math.random() * emptyCells.length)];
@@ -1474,9 +1383,8 @@
             checkEndState(false);
         }
 
-        function render(state = {}) {
-            pvpState = state; // Cập nhật trạng thái PvP
-            // Cập nhật ID người chơi cục bộ cho dọn dẹp và logic chuyển lượt
+        function render(state = {}) { /* ... Giữ nguyên render ... */
+            pvpState = state; 
             player1Id = state.player1Id || null;
             player2Id = state.player2Id || null;
 
@@ -1493,7 +1401,6 @@
                 myMark = myPlayerId === state.player1Id ? 'X' : 'O';
                 currentOpponentName = myPlayerId === state.player1Id ? (state.player2Name || 'Đối thủ (O)') : (state.player1Name || 'Đối thủ (X)');
                 
-                // Cập nhật trạng thái phòng chơi
                 let infoText;
                 if (state.winner) {
                     infoText = `Game Over! ${state.winner} thắng!`;
@@ -1502,7 +1409,7 @@
                 } else {
                     const myName = myPlayerId === state.player1Id ? state.player1Name : state.player2Name;
                     const turnName = isTurn ? myName : currentOpponentName;
-                    infoText = isTurn ? `Lượt của BẠN (${myMark})` : `Đang chờ ${currentOpponentName} (${myMark === 'X' ? 'O' : 'X'}) đi...`;
+                    infoEl.textContent = isTurn ? `Lượt của BẠN (${myMark})` : `Đang chờ ${currentOpponentName} (${myMark === 'X' ? 'O' : 'X'}) đi...`;
                 }
                 infoEl.textContent = infoText;
                 
@@ -1514,7 +1421,6 @@
             
             board.forEach((cell, index) => {
                 const cellEl = document.createElement('div');
-                // FIXED: Apply dynamic style for TTT cell based on size
                 cellEl.style.cssText = `
                     width: 100%; 
                     aspect-ratio: 1 / 1; 
@@ -1532,7 +1438,6 @@
                 cellEl.textContent = cell;
                 
                 if (mode === 'pvp') {
-                     // Nếu PvP: Chỉ click được khi đến lượt mình, ô trống, và đã có P2
                     const canClick = isMyTurn && cell === null && !state.isOver && state.player2Id;
                     
                     cellEl.onclick = () => { 
@@ -1541,7 +1446,6 @@
                     };
                     cellEl.style.cursor = canClick ? 'pointer' : 'default';
                 } else {
-                    // Nếu AI: Chỉ click khi là X
                     cellEl.onclick = () => handleClick(index);
                 }
                 
@@ -1549,30 +1453,43 @@
             });
         }
         
+        // --- LOGIC CHAT PVP (MỚI) ---
+        function setupPvpChat(lobbyId) {
+            const chatRef = collection(db, "tictactoe_lobbies", lobbyId, "chats");
+            // SỬA: Sắp xếp theo thứ tự cũ nhất lên đầu (asc)
+            const chatQuery = query(chatRef, orderBy("createdAt", "asc"), limit(50));
+            const chatMessagesContainer = chatContainer.querySelector('#pvpChatMessages');
+            
+            if (unsubscribeChat) unsubscribeChat();
+
+            unsubscribeChat = onSnapshot(chatQuery, (querySnapshot) => {
+                let messages = [];
+                querySnapshot.forEach(doc => messages.push(doc.data()));
+                // KHÔNG CẦN ĐẢO NGƯỢC
+                renderChatMessages(chatMessagesContainer, messages);
+            }, (error) => {
+                console.error("Firebase PvP chat snapshot error:", error);
+            });
+        }
+        // --- END LOGIC CHAT PVP ---
+
         async function setupPvp() {
             infoEl.textContent = 'Đang tìm phòng chơi...';
             const gameCollection = collection(db, "tictactoe_lobbies");
             let lobbyId;
 
-            // --- FIX: Logic Tự động Ghép phòng (Tránh lỗi Index) ---
-            
-            // 1. Tìm các phòng đang chờ (không lọc theo player1Id)
             const openLobbiesQuery = query(gameCollection, 
                 where("player2Id", "==", null), 
                 where("size", "==", size),
-                limit(10) // Lấy một vài phòng để lọc ở client
+                limit(10) 
             );
             const availableLobbiesSnapshot = await getDocs(openLobbiesQuery);
-            
-            // 2. Lọc ở Client để tìm phòng không phải của mình
             const opponentLobbyDoc = availableLobbiesSnapshot.docs.find(doc => doc.data().player1Id !== myPlayerId);
 
             if (opponentLobbyDoc) {
-                // TÌM THẤY & THAM GIA phòng của người khác
                 lobbyId = opponentLobbyDoc.id;
                 pvpGameRef = doc(gameCollection, lobbyId);
                 
-                // Player O (người tham gia)
                 await updateDoc(pvpGameRef, { 
                     player2Id: myPlayerId, 
                     player2Name: APP.playerName 
@@ -1580,7 +1497,6 @@
                 infoEl.textContent = `Tham gia thành công. ${size}x${size}. Bạn là O.`;
                 
             } else {
-                // KHÔNG TÌM THẤY phòng của người khác. Kiểm tra xem mình có phòng đang chờ không.
                 const myLobbyQuery = query(gameCollection,
                     where("player1Id", "==", myPlayerId),
                     where("player2Id", "==", null),
@@ -1590,14 +1506,12 @@
                 const myExistingLobbies = await getDocs(myLobbyQuery);
 
                 if (!myExistingLobbies.empty) {
-                    // SỬ DỤNG LẠI phòng đang chờ của mình
                     const lobbyDoc = myExistingLobbies.docs[0];
                     lobbyId = lobbyDoc.id;
                     pvpGameRef = doc(gameCollection, lobbyId);
                     infoEl.innerHTML = `Sử dụng lại phòng chờ của bạn. ${size}x${size}. Bạn là X. Đang chờ đối thủ...`;
 
                 } else {
-                    // TẠO phòng mới
                     lobbyId = Utils.generateGameId();
                     pvpGameRef = doc(gameCollection, lobbyId);
 
@@ -1610,7 +1524,7 @@
                         player2Id: null,
                         player2Name: null,
                         board: JSON.stringify(initialBoard),
-                        turn: myPlayerId, // Player X (người tạo) đi trước
+                        turn: myPlayerId, 
                         isOver: false,
                         createdAt: Date.now() 
                     });
@@ -1618,14 +1532,16 @@
                 }
             }
             
+            // BẮT ĐẦU CHAT LISTENER
+            setupPvpChat(lobbyId);
+
             // Lắng nghe trạng thái phòng chơi
             unsubscribe = onSnapshot(pvpGameRef, (docSnapshot) => {
                 if (docSnapshot.exists()) {
                     const state = docSnapshot.data();
                     render(state);
                     if (state.isOver) {
-                        unsubscribe();
-                        // Lấy tên người thắng để hiển thị
+                        if(unsubscribe) unsubscribe();
                         const winnerName = (state.winner === 'X') 
                             ? state.player1Name 
                             : (state.winner === 'O' ? state.player2Name : 'Hòa');
@@ -1644,7 +1560,6 @@
         if (mode === 'pvp') {
             setupPvp();
         } else {
-            // Khởi tạo trạng thái AI
             pvpState.turn = 'X'; 
             render();
         }
@@ -1652,6 +1567,7 @@
         window.GAME = { 
             destroy: () => { 
                 if(unsubscribe) unsubscribe();
+                if(unsubscribeChat) unsubscribeChat();
                 // FIX: Add cleanup for abandoned TTT lobbies (Sử dụng ID cục bộ)
                 if (mode === 'pvp' && pvpGameRef && player1Id === myPlayerId && !player2Id) {
                     deleteDoc(pvpGameRef).catch(e => console.error("Lỗi xóa phòng TTT trống:", e));
@@ -1660,11 +1576,17 @@
         };
     }
     
-    // --- 8) Battleship (Hải Chiến) Implementation (PvP & AI) ---
+    // --- 8) Battleship (Hải Chiến) Implementation (Bổ sung Chat) ---
     function initBattleship(container, mode) {
         
+        // Tạo container chính cho Game và Chat
+        const gameContainer = document.createElement('div');
+        gameContainer.className = 'game-content-container';
+        gameContainer.style.width = mode === 'pvp' ? '100%' : 'auto';
+
         let pvpGameRef = null;
         let unsubscribe = null;
+        let unsubscribeChat = null; // Biến mới cho Chat PvP
         let myShipBoard = Utils.placeShipsRandomly();
         let myHitBoard = Array(10).fill(0).map(() => Array(10).fill(null)); 
         let opponentHitBoard = Array(10).fill(0).map(() => Array(10).fill(null)); 
@@ -1673,8 +1595,8 @@
         let aiShipBoard = null;
         let aiHits = Array(10).fill(0).map(() => Array(10).fill(null));
         let isAiTurn = false;
-        let currentPlayer = myPlayerId; // Start with player turn
-        let pvpState = {}; // Sẽ được cập nhật từ onSnapshot
+        let currentPlayer = myPlayerId; 
+        let pvpState = {}; 
 
         
         const root = document.createElement('div');
@@ -1695,14 +1617,46 @@
             </div>
             <div id="shipsLeft" style="margin-top: 15px; text-align: center; color: var(--muted);"></div>
         `;
-        container.appendChild(root);
+        gameContainer.appendChild(root);
+        container.appendChild(gameContainer);
 
-        const myBoardEl = getEl('myBoard');
-        const opponentBoardEl = getEl('opponentBoard');
-        const bsStatus = getEl('bsStatus');
-        const bsTurnInfo = getEl('bsTurnInfo');
-        const shipsLeftEl = getEl('shipsLeft');
+        const myBoardEl = root.querySelector('#myBoard');
+        const opponentBoardEl = root.querySelector('#opponentBoard');
+        const bsStatus = root.querySelector('#bsStatus');
+        const bsTurnInfo = root.querySelector('#bsTurnInfo');
+        const shipsLeftEl = root.querySelector('#shipsLeft');
         
+        let chatContainer = null;
+        let chatInput = null;
+
+        if (mode === 'pvp') {
+             // Khởi tạo container cho Chat PvP (đặt ngoài gameContainer để nó nằm ở cột 2)
+             chatContainer = document.createElement('div');
+             chatContainer.style.width = '100%';
+             chatContainer.innerHTML = `
+                 <div class="card" style="padding:10px 15px; margin-top: 0;">
+                     <div style="font-weight:700; margin-bottom: 5px;">Chat Phòng Chiến</div>
+                     <div id="pvpChatMessages" style="height: 120px; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; padding-right: 8px; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);"></div>
+                     <div style="display: flex; gap: 8px;">
+                         <input type="text" id="bsChatInput" placeholder="Nhắn tin..." style="flex: 1; padding: 8px;"/>
+                         <button class="btn" id="btnSendBsChat" style="padding: 8px 12px;">Gửi</button>
+                     </div>
+                 </div>
+             `;
+             container.appendChild(chatContainer);
+            chatInput = chatContainer.querySelector('#bsChatInput');
+            const btnSendBsChat = chatContainer.querySelector('#btnSendBsChat');
+            
+            btnSendBsChat.addEventListener('click', () => {
+                if (pvpGameRef) sendChatMessage(chatInput, "battleship_lobbies", pvpGameRef.id);
+            });
+            chatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && pvpGameRef) {
+                    sendChatMessage(chatInput, "battleship_lobbies", pvpGameRef.id);
+                }
+            });
+        }
+
         const gridSize = 10;
 
         function boardToFirestore(board2D, hitBoard2D) {
@@ -1718,8 +1672,8 @@
              return flatBoard.split(';').map(row => row.split(',').map(v => v === 'true'));
         }
 
-        function renderBoards(state = {}) {
-            pvpState = state; // Update PvP State for Battleship
+        function renderBoards(state = {}) { /* ... Giữ nguyên renderBoards ... */
+            pvpState = state; 
             
             let isReady = true;
             let isMyTurn = true;
@@ -1813,11 +1767,30 @@
             }
         }
         
+        // --- LOGIC CHAT PVP (MỚI) ---
+        function setupPvpChat(lobbyId) {
+            const chatRef = collection(db, "battleship_lobbies", lobbyId, "chats");
+            // SỬA: Sắp xếp theo thứ tự cũ nhất lên đầu (asc)
+            const chatQuery = query(chatRef, orderBy("createdAt", "asc"), limit(50));
+            const chatMessagesContainer = chatContainer.querySelector('#pvpChatMessages');
+            
+            if (unsubscribeChat) unsubscribeChat();
+
+            unsubscribeChat = onSnapshot(chatQuery, (querySnapshot) => {
+                let messages = [];
+                querySnapshot.forEach(doc => messages.push(doc.data()));
+                // KHÔNG CẦN ĐẢO NGƯỢC
+                renderChatMessages(chatMessagesContainer, messages);
+            }, (error) => {
+                console.error("Firebase PvP chat snapshot error:", error);
+            });
+        }
+        // --- END LOGIC CHAT PVP ---
+
         // Logic AI bắn (Chế độ chơi đơn)
-        function aiShoot() {
+        function aiShoot() { /* ... Giữ nguyên aiShoot ... */
             if (!isAiTurn) return;
             
-            // Tìm ô chưa bị bắn trên bàn chơi của người chơi (myHitBoard)
             let unhitCells = [];
             for(let r=0; r<gridSize; r++) {
                 for(let c=0; c<gridSize; c++) {
@@ -1841,38 +1814,34 @@
                     bsTurnInfo.textContent = 'AI đã bắn TRƯỢT.';
                 }
                 
-                currentPlayer = myPlayerId; // Chuyển lượt lại cho người chơi
+                currentPlayer = myPlayerId; 
                 renderBoards();
                 checkGameOver(false);
             }
         }
 
-        async function handleAttack(e) {
+        async function handleAttack(e) { /* ... Giữ nguyên handleAttack ... */
             const r = parseInt(e.target.dataset.r);
             const c = parseInt(e.target.dataset.c);
             
             if (opponentHitBoard[r][c]) return;
 
-            // Tạm thời disable click
             opponentBoardEl.querySelectorAll('.b-cell').forEach(c => c.onclick = null);
 
             if (mode === 'pvp') {
-                // Logic PvP (Cloud)
                 if (!pvpGameRef || !auth.currentUser) return;
                 
-                // Cần đảm bảo opponentPlayerId là ID hợp lệ, không phải null hoặc undefined
-                const nextTurnId = opponentPlayerId || myPlayerId; // Fallback to self if opponentId is somehow lost
+                const nextTurnId = opponentPlayerId || myPlayerId; 
 
                 await updateDoc(pvpGameRef, { 
                     lastAttack: JSON.stringify({ r, c, attackerId: myPlayerId }),
-                    turn: nextTurnId, // Chuyển lượt cho đối thủ
+                    turn: nextTurnId, 
                 }).catch(err => {
                     console.error("Lỗi updateDoc Battleship:", err);
                     showAlert("Lỗi đồng bộ Cloud Hải Chiến. Vui lòng kiểm tra Rules/kết nối.");
                  });
                 
             } else { 
-                // Logic AI (Single Player)
                 const isHit = aiShipBoard[r][c];
                 const hitStatus = isHit ? 'hit' : 'miss';
                 
@@ -1885,7 +1854,6 @@
                     currentPlayer = 'AI';
                     renderBoards();
                     
-                    // Kích hoạt AI bắn
                     setTimeout(aiShoot, 1000);
                 }
                 
@@ -1894,18 +1862,17 @@
             }
         }
         
-        function checkGameOver(isPvp, winnerId = null, winnerName = null) {
+        function checkGameOver(isPvp, winnerId = null, winnerName = null) { /* ... Giữ nguyên checkGameOver ... */
             let myShipsLeft = Utils.countShipsLeft(myShipBoard, myHitBoard);
             let opponentShipsLeft = mode === 'pvp' 
-                ? (isPvp ? (myPlayerId === pvpState.player1Id ? pvpState.player2ShipsLeft : pvpState.player1ShipsLeft) : 17) // PvP sẽ kiểm tra từ state (không dùng local)
-                : Utils.countShipsLeft(aiShipBoard, opponentHitBoard); // AI dùng board local
+                ? (isPvp ? (myPlayerId === pvpState.player1Id ? pvpState.player2ShipsLeft : pvpState.player1ShipsLeft) : 17) 
+                : Utils.countShipsLeft(aiShipBoard, opponentHitBoard); 
                 
             if (myShipsLeft <= 0 || opponentShipsLeft <= 0) {
                 const winner = myShipsLeft > 0 ? APP.playerName : (mode === 'pvp' ? winnerName : 'AI');
                 const score = myShipsLeft > 0 ? 1000 + opponentShipsLeft * 10 : 0;
                 
                 if (isPvp) {
-                    // PvP đã được xử lý qua onSnapshot và updateDoc
                     return;
                 }
                 
@@ -1924,23 +1891,18 @@
             let lobbyId;
             myPlayerId = auth.currentUser.uid;
             
-            // --- Logic Tự động Ghép phòng (FIXED: Đảm bảo opponentPlayerId được gán ngay) ---
-            
-            // 1. Tìm các phòng đang chờ
             const openLobbiesQuery = query(gameCollection, 
                 where("player2Id", "==", null),
                 limit(10)
             );
             const availableLobbiesSnapshot = await getDocs(openLobbiesQuery);
 
-            // 2. Lọc ở Client để tìm phòng không phải của mình
             const opponentLobbyDoc = availableLobbiesSnapshot.docs.find(doc => doc.data().player1Id !== myPlayerId);
             
             if (opponentLobbyDoc) {
-                // TÌM THẤY & THAM GIA phòng của người khác
                 lobbyId = opponentLobbyDoc.id;
                 pvpGameRef = doc(gameCollection, lobbyId);
-                opponentPlayerId = opponentLobbyDoc.data().player1Id; // GÁN NGAY
+                opponentPlayerId = opponentLobbyDoc.data().player1Id; 
                 
                 const { flatShip: flatShipBoard, flatHit: flatHitBoard } = boardToFirestore(myShipBoard, myHitBoard);
                 
@@ -1953,7 +1915,6 @@
                 bsStatus.innerHTML = `Tham gia thành công. Bạn là P2. Đang chờ P1 đi trước...`;
 
             } else {
-                // KHÔNG TÌM THẤT. Kiểm tra phòng của mình
                 const myLobbyQuery = query(gameCollection,
                     where("player1Id", "==", myPlayerId),
                     where("player2Id", "==", null),
@@ -1962,13 +1923,11 @@
                 const myExistingLobbies = await getDocs(myLobbyQuery);
 
                 if (!myExistingLobbies.empty) {
-                    // SỬ DỤNG LẠI phòng của mình
                     const lobbyDoc = myExistingLobbies.docs[0];
                     lobbyId = lobbyDoc.id;
                     pvpGameRef = doc(gameCollection, lobbyId);
                     bsStatus.innerHTML = `Sử dụng lại phòng chờ của bạn. Bạn là P1. Đang chờ đối thủ...`;
                 } else {
-                    // TẠO phòng mới
                     lobbyId = Utils.generateGameId();
                     pvpGameRef = doc(gameCollection, lobbyId);
                     
@@ -1995,11 +1954,13 @@
                 }
             }
             
+            // BẮT ĐẦU CHAT LISTENER
+            setupPvpChat(lobbyId);
+
             unsubscribe = onSnapshot(pvpGameRef, async (docSnapshot) => {
                 if (docSnapshot.exists()) {
                     const state = docSnapshot.data();
                     
-                    // CẬP NHẬT opponentPlayerId KHI TRẠNG THÁI THAY ĐỔI
                     opponentPlayerId = myPlayerId === state.player1Id ? state.player2Id : state.player1Id;
                     
                     if (state.lastAttack) {
@@ -2066,6 +2027,7 @@
         window.GAME = { 
             destroy: () => { 
                 if(unsubscribe) unsubscribe(); 
+                if(unsubscribeChat) unsubscribeChat();
                 // FIX: Thêm logic dọn dẹp cho Hải Chiến, dùng myPlayerId và pvpState.player2Id để tránh undefined
                 if (mode === 'pvp' && pvpGameRef && myPlayerId === auth.currentUser.uid && !pvpState.player2Id) {
                     deleteDoc(pvpGameRef).catch(e => console.error("Lỗi xóa phòng Hải Chiến trống:", e));
@@ -2074,7 +2036,349 @@
         };
     }
 
+    // --- 1) Quiz Implementation ---
+    function initQuiz(container, mode){ /* ... Giữ nguyên initQuiz ... */
+        const difficulty = getEl('quizDifficulty').value;
+        const NUM_QUESTIONS = 6; 
+        const timePerQuestion = difficulty==='easy'?18: (difficulty==='normal'?12:8);
+        
+        const allQuestions = [
+            {q:'Thủ đô của Việt Nam là?', a:'Hà Nội', opts:['Hà Nội','Hồ Chí Minh','Đà Nẵng','Hải Phòng']},
+            {q:'2 + 3 = ?', a:'5', opts:['4','5','6','3']},
+            {q:'Mặt trời mọc ở hướng nào?', a:'Đông', opts:['Tây','Đông','Nam','Bắc']},
+            {q:'Việt Nam thuộc châu lục nào?', a:'Á', opts:['Âu','Mỹ','Phi','Á']},
+            {q:'Hình vuông có bao nhiêu cạnh?', a:'4', opts:['3','4','5','6']},
+            {q:'Tháng nào có 28 ngày?', a:'Tháng Hai', opts:['Tháng Giêng','Tháng Hai','Tháng Ba','Tháng Tư']},
+            {q:'Ai là người tìm ra thuyết tương đối?', a:'Albert Einstein', opts:['Isaac Newton','Galileo Galilei','Albert Einstein','Stephen Hawking']}, 
+            {q:'Con gì sống dưới nước và có vảy?', a:'Cá', opts:['Gà','Mèo','Cá','Chó']}, 
+            {q:'Nguyên tố hóa học nào có ký hiệu là O?', a:'Oxy', opts:['Oxy','Nitơ','Cacbon','Hiđro']}, 
+            {q:'Năm 2025 thuộc thế kỷ nào?', a:'XXI', opts:['XIX','XX','XXI','XXII']},
+            {q:'Ai là tác giả của Truyện Kiều?', a:'Nguyễn Du', opts:['Hồ Xuân Hương','Nguyễn Trãi','Nguyễn Du','Cao Bá Quát']},
+            {q:'Thực vật hô hấp bằng gì?', a:'Lá', opts:['Rễ','Thân','Lá','Hoa']},
+            {q:'Núi cao nhất Việt Nam?', a:'Fansipan', opts:['Bạch Mã','Fansipan','Chư Đăng Ya','Langbiang']},
+            {q:'Cây thuộc họ lúa?', a:'Mía', opts:['Bắp cải','Mía','Cà chua','Cà phê']},
+            {q:'Lục địa lớn nhất thế giới?', a:'Châu Á', opts:['Châu Phi','Châu Âu','Châu Mỹ','Châu Á']},
+            {q:'Quốc khánh Việt Nam là ngày nào?', a:'2/9', opts:['30/4','1/5','2/9','19/8']},
+            {q:'Đơn vị đo cường độ dòng điện?', a:'Ampere', opts:['Volt','Ohm','Watt','Ampere']},
+            {q:'1km bằng bao nhiêu mét?', a:'1000', opts:['10','100','1000','10000']},
+            {q:'Tỉnh có diện tích lớn nhất Việt Nam?', a:'Nghệ An', opts:['Đắk Lắk','Thanh Hóa','Nghệ An','Sơn La']},
+            {q:'Thành phần chính của không khí?', a:'Nitơ', opts:['Oxy','Cacbon','Nitơ','Hiđro']},
+            {q:'Tác giả ' + 'Bình Ngô Đại Cáo' + '?', a:'Nguyễn Trãi', opts:['Nguyễn Du','Hồ Chí Minh','Nguyễn Trãi','Lê Lợi']},
+            {q:'Hành tinh nào gần Mặt Trời nhất?', a:'Sao Thủy', opts:['Sao Hỏa','Sao Kim','Sao Thủy','Sao Mộc']},
+            {q:'Nước nào có hình chiếc ủng?', a:'Ý', opts:['Pháp','Ý','Đức','Tây Ban Nha']},
+            {q:'Con vật có thể xoay đầu 270 độ?', a:'Cú', opts:['Hươu cao cổ','Đại bàng','Cú','Gấu']},
+            {q:'Màu cơ bản trong hội họa?', a:'Đỏ, Vàng, Xanh dương', opts:['Đỏ, Xanh lá, Xanh dương','Đỏ, Vàng, Xanh dương','Đen, Trắng, Xám','Hồng, Cam, Tím']},
+            {q:'Kim loại nhẹ nhất?', a:'Lithium', opts:['Sắt','Vàng','Lithium','Nhôm']},
+            {q:'Quốc hoa của Việt Nam?', a:'Hoa Sen', opts:['Hoa Mai','Hoa Đào','Hoa Sen','Hoa Hồng']},
+            {q:'Thể tích hình hộp chữ nhật được tính bằng?', a:'dài x rộng x cao', opts:['dài + rộng + cao','dài x rộng x cao','2 x (dài + rộng)','dài x rộng']},
+            {q:'Trong bóng đá, 1 trận có bao nhiêu hiệp?', a:'2', opts:['1','2','3','4']},
+            {q:'Ai là Chủ tịch Hồ Chí Minh?', a:'Hồ Chí Minh', opts:['Hồ Chí Minh','Võ Nguyên Giáp','Phạm Văn Đồng','Trần Đại Quang']},
+            {q:'Cơ quan lớn nhất trong cơ thể người?', a:'Da', opts:['Gan','Phổi','Tim','Da']},
+            {q:'Sông dài nhất Việt Nam?', a:'Sông Đồng Nai', opts:['Sông Hồng','Sông Đồng Nai','Sông Mê Kông','Sông Đà']},
+            {q:'Hình tam giác có tổng góc bằng bao nhiêu độ?', a:'180', opts:['90','180','270','360']},
+            {q:'1 đô la Mỹ bằng bao nhiêu cent?', a:'100', opts:['10','50','100','1000']},
+            {q:'Chất lỏng dẫn điện tốt nhất?', a:'Nước muối', opts:['Nước tinh khiết','Dầu ăn','Nước muối','Cồn']},
+            {q:'Tác giả bài hát Tiến Quân Ca?', a:'Văn Cao', opts:['Văn Cao','Phạm Tuyên','Trần Hoàn','Hoàng Vân']},
+            {q:'Khí quyển Trái Đất có mấy tầng chính?', a:'5', opts:['3','4','5','6']},
+            {q:'Loài cá bay được?', a:'Cá chuồn', opts:['Cá mập','Cá chuồn','Cá voi','Cá hồi']},
+            {q:'Đơn vị tiền tệ của Nhật Bản?', a:'Yên', opts:['Won','Nhân dân tệ','Yên','Đô la']},
+            {q:'Vật liệu cứng nhất trên Trái Đất?', a:'Kim cương', opts:['Kim cương','Thép','Gỗ','Thủy tinh']},
+            {q:'Bác Hồ ra đi tìm đường cứu nước năm nào?', a:'1911', opts:['1930','1945','1911','1954']},
+            {q:'Bán kính Trái Đất xấp xỉ bao nhiêu km?', a:'6371', opts:['1200','3500','6371','10000']},
+            {q:'Ngôn ngữ lập trình phổ biến nhất?', a:'JavaScript', opts:['Java','C++','Python','JavaScript']},
+            {q:'Công thức hóa học của nước?', a:'H₂O', opts:['CO₂','H₂O','O₂','NaCl']},
+            {q:'Loại năng lượng không thể tái tạo?', a:'Than đá', opts:['Mặt trời','Gió','Nước','Than đá']},
+            {q:'Ai là người đầu tiên đặt chân lên Mặt Trăng?', a:'Neil Armstrong', opts:['Buzz Aldrin','Yuri Gagarin','Neil Armstrong','Alan Shepard']},
+            {q:'Môn học nghiên cứu về sự sống?', a:'Sinh học', opts:['Vật lý','Hóa học','Toán học','Sinh học']},
+            {q:'Tên gọi khác của bệnh sốt rét?', a:'Sốt rét', opts:['Sốt xuất huyết','Sốt rét','Cảm cúm','Sởi']},
+            {q:'Tổ chức Liên Hợp Quốc được thành lập năm nào?', a:'1945', opts:['1918','1945','1954','1989']},
+            {q:'Món ăn truyền thống nổi tiếng nhất Việt Nam?', a:'Phở', opts:['Bún chả','Phở','Bánh mì','Gỏi cuốn']},
+            {q:'Đơn vị đo tần số?', a:'Hertz', opts:['Volt','Ohm','Hertz','Joule']},
+        ];
 
+        const qs = Utils.shuffleArray(allQuestions).slice(0, NUM_QUESTIONS);
+
+        let idx=0, score=0, timeLeft=timePerQuestion;
+        
+        const root = document.createElement('div');
+        root.style.width = '100%';
+        root.innerHTML = `<div id="qWrap" style="margin-top:8px;"></div><div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center; flex-wrap: wrap; gap: 8px;"><div class="muted">Time left: <span id="qTime">${timeLeft}</span>s</div><div>Score: <span id="qScore">${score}</span></div></div>`;
+        container.appendChild(root);
+
+        function renderQuestion(){
+          const qWrap = root.querySelector('#qWrap'); qWrap.innerHTML = '';
+          if(idx>=qs.length){ finishQuiz(); return; }
+          const item = qs[idx];
+          const qDiv = document.createElement('div');
+          qDiv.innerHTML = `<div style="font-weight:700;margin-bottom:10px; font-size: 1.1em;">Q${idx+1} (${idx+1}/${NUM_QUESTIONS}). ${item.q}</div><div style="display:flex; flex-wrap: wrap; gap: 8px;"></div>`;
+          const optionsDiv = qDiv.querySelector('div:last-child');
+          
+          item.opts.forEach(opt=>{
+            const b=document.createElement('button'); 
+            b.className='btn'; 
+            b.style.padding='12px 16px'; 
+            b.style.flexGrow = 1;
+            b.textContent=opt; 
+            b.onclick=()=>{ 
+              if(opt===item.a) score += 150 + timeLeft*5; 
+              idx++; 
+              timeLeft = timePerQuestion; 
+              root.querySelector('#qScore').textContent = score; 
+              renderQuestion(); 
+            };
+            optionsDiv.appendChild(b);
+          });
+          qWrap.appendChild(qDiv);
+        }
+
+        renderQuestion();
+        let timer = setInterval(()=>{ 
+            timeLeft--; 
+            const el=root.querySelector('#qTime'); 
+            if(el) el.textContent=timeLeft; 
+            if(timeLeft<=0){ 
+                idx++; 
+                timeLeft=timePerQuestion; 
+                if(idx>=qs.length) finishQuiz(); 
+                else renderQuestion(); 
+            } 
+        }, 1000);
+        
+        window.GAME = { destroy(){ clearInterval(timer); } };
+        
+        async function finishQuiz(){
+          clearInterval(timer);
+          
+          const resultContent = `
+              <div style="text-align:center; width: 100%;">
+                  <h3 style="color: var(--accent1);">Quiz kết thúc!</h3>
+                  <p style="font-size: 1.5em; font-weight: bold;">Điểm của bạn: ${score}</p>
+              </div>
+          `;
+          
+          container.innerHTML = resultContent;
+          
+          pushScore(APP.playerName, score, 'quiz');
+        }
+    }
+
+    // --- 2) Memory Implementation ---
+    function initMemory(container, mode){ /* ... Giữ nguyên initMemory ... */
+        const difficulty = getEl('memoryDifficulty').value;
+        const pairs = difficulty==='easy'?6: (difficulty==='normal'?8:10);
+        const fruits = ['🍎', '🍌', '🍇', '🍓', '🍒', '🍑', '🍍', '🥝', '🍉', '🥭', '🥥', '🥑'].slice(0, pairs);
+        const cards = Utils.shuffleArray([...fruits, ...fruits]);
+        let flipped = [], matched = new Set(), moves=0, lockBoard = false;
+        const grid = document.createElement('div'); 
+        grid.className = 'memory-grid';
+        
+        let columns = 4;
+        if (pairs === 10) columns = 5;
+        grid.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+
+        container.appendChild(grid);
+        
+        cards.forEach((s,i)=>{
+          const c=document.createElement('div'); 
+          c.className = 'memory-card';
+          c.textContent=s; 
+          c.dataset.index=i; 
+          c.onclick=()=>flip(i);
+          grid.appendChild(c);
+        });
+        
+        const info = document.createElement('div'); info.className='muted small'; info.style.width='100%'; info.style.textAlign='center'; info.style.marginTop='10px'; info.textContent='Moves: 0'; container.appendChild(info);
+        
+        function flip(i){
+          if(lockBoard || flipped.includes(i) || matched.has(i)) return;
+          const cardEl = grid.children[i];
+          flipped.push(i);
+          cardEl.classList.add('flipped');
+
+          if(flipped.length===2){
+            moves++; info.textContent='Moves: '+moves; lockBoard = true;
+            const [idx1, idx2] = flipped;
+            if(cards[idx1]===cards[idx2]){ 
+              matched.add(idx1); matched.add(idx2); 
+              grid.children[idx1].classList.add('matched');
+              grid.children[idx2].classList.add('matched');
+              grid.children[idx1].classList.remove('flipped');
+              grid.children[idx2].classList.remove('flipped');
+              flipped=[]; lockBoard=false; 
+              if(matched.size===cards.length) finishMem(); 
+            } else { 
+              setTimeout(()=>{ 
+                grid.children[idx1].classList.remove('flipped');
+                grid.children[idx2].classList.remove('flipped');
+                flipped=[]; lockBoard=false;
+              }, 800); 
+            }
+          }
+        }
+        
+        function finishMem(){ 
+          const score = Math.max(0, 5000 - moves*50); 
+          showAlert('Hoàn thành! Điểm: '+score, () => {pushScore(APP.playerName, score, 'memory'); closeGame();}); 
+        }
+        window.GAME = { destroy(){} };
+    }
+
+    // --- 3) Click Speed Implementation ---
+    function initClickSpeed(container, mode){ /* ... Giữ nguyên initClickSpeed ... */
+        const duration = parseInt(getEl('clickDuration').value,10) || 10;
+        let running=false, timeLeft=duration, count=0, timer=null;
+        const root=document.createElement('div'); root.innerHTML = `<div style="display:flex;gap:12px;align-items:center; flex-wrap: wrap;"><div><strong>Time:</strong> <span id="csTime">${timeLeft}</span>s</div><div><strong>Clicks:</strong> <span id="csCount">${count}</span></div></div><div style="margin-top:10px; display:flex; gap: 10px;"><button class="btn" id="csStart">Bắt đầu</button> <button class="ghost" id="csReset">Reset</button></div><div style="margin-top:14px"><button class="btn" id="csTap" style="font-size:20px;padding:28px 40px; width: 100%;">NHẤP!</button></div>`;
+        container.appendChild(root);
+        const elTime = root.querySelector('#csTime'), elCount = root.querySelector('#csCount');
+        root.querySelector('#csStart').onclick = ()=>{
+          if(running) return;
+          running=true; count=0; timeLeft=duration; elTime.textContent=timeLeft; elCount.textContent=count;
+          timer = setInterval(()=>{ timeLeft--; elTime.textContent=timeLeft; if(timeLeft<=0){ clearInterval(timer); running=false; const score = count; showAlert('Hết giờ! Clicks: '+count, () => {pushScore(APP.playerName, score, 'clickspeed'); closeGame();}); } },1000);
+        };
+        root.querySelector('#csTap').onclick = ()=>{ if(!running) return; count++; elCount.textContent=count; };
+        root.querySelector('#csReset').onclick = ()=>{ clearInterval(timer); running=false; timeLeft=duration; count=0; elTime.textContent=timeLeft; elCount.textContent=count; };
+        window.GAME = { destroy(){ if(timer) clearInterval(timer); } };
+    }
+    
+    // --- 4) Snake Implementation ---
+    function initSnake(container, mode){ /* ... Giữ nguyên initSnake ... */
+      const difficulty = getEl('snakeDifficulty').value;
+      const speed = difficulty==='easy'?160: (difficulty==='normal'?110:70);
+      const cw = 20, cols = 20, rows = 15;
+      
+      let canvas = document.createElement('canvas'); 
+      canvas.width = cols*cw; canvas.height = rows*cw; 
+      canvas.className='game-canvas'; 
+      canvas.style.width = '100%'; canvas.style.maxWidth = `${cols * cw}px`;
+      container.appendChild(canvas);
+      
+      let ctx = canvas.getContext('2d');
+      let snake = [{x:3,y:7},{x:2,y:7},{x:1,y:7}], dir='right', food=randomFood(), score=0;
+      let tick=null; draw();
+      
+      function randomFood(){ let p; do{ p={x:Math.floor(Math.random()*cols), y:Math.floor(Math.random()*rows)} } while(snake.some(s=>s.x===p.x && s.y===p.y)); return p; }
+      function draw(){ ctx.fillStyle='#061022'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle='#ff4d6d'; ctx.fillRect(food.x*cw+2, food.y*cw+2, cw-4, cw-4); snake.forEach((s,i)=>{ ctx.fillStyle = i===0 ? '#ffd36e' : '#7df9ff'; ctx.fillRect(s.x*cw+1, s.y*cw+1, cw-2, cw-2); }); ctx.fillStyle='#fff'; ctx.font='14px Inter'; ctx.fillText('Score: '+score, 8, 16); }
+      function step(){
+        const head = {...snake[0]};
+        if(dir==='right') head.x++; if(dir==='left') head.x--; if(dir==='up') head.y--; if(dir==='down') head.y++;
+        if(head.x<0||head.y<0||head.x>=cols||head.y>=rows||snake.some(s=>s.x===head.x && s.y===head.y)){
+          clearInterval(tick); showAlert('Game Over! Score: '+score, () => {pushScore(APP.playerName, score, 'snake'); closeGame();}); return;
+        }
+        snake.unshift(head);
+        if(head.x===food.x && head.y===food.y){ score+=10; food=randomFood(); }
+        else snake.pop();
+        draw();
+      }
+      const onKey = (e) => {
+          if(e.key==='ArrowUp' && dir!=='down') dir='up';
+          if(e.key==='ArrowDown' && dir!=='up') dir='down';
+          if(e.key==='ArrowLeft' && dir!=='right') dir='left';
+          if(e.key==='ArrowRight' && dir!=='left') dir='right';
+      };
+      document.addEventListener('keydown', onKey);
+      tick = setInterval(step, speed);
+      window.GAME = { destroy(){ clearInterval(tick); document.removeEventListener('keydown', onKey); } };
+    }
+
+    /* 5) Flappy mini Implementation */
+    function initFlappy(container, mode){ /* ... Giữ nguyên initFlappy ... */
+      const diff = getEl('flappyDifficulty').value;
+      const gravity = diff==='easy'?0.45: (diff==='normal'?0.6:0.8);
+      const pipeSpeed = diff==='easy'?2: (diff==='normal'?3:4);
+      const canvas = document.createElement('canvas'); canvas.width=420; canvas.height=420; canvas.className='game-canvas'; 
+      canvas.style.width = '100%'; canvas.style.maxWidth = `420px`; 
+      container.appendChild(canvas);
+      
+      const ctx = canvas.getContext('2d');
+      let y = canvas.height / 2, vy=0, pipes=[], score=0; 
+      let tick = setInterval(loop, 30);
+      
+      pipes.push({x: canvas.width * 1.5, top: 150, gap: 100, scored: false});
+
+      function loop(){
+        vy += gravity; y += vy;
+        
+        if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width * 0.5) {
+            pipes.push({x: canvas.width, top: 60 + Math.random()*180, gap: 100, scored: false});
+        }
+        
+        pipes.forEach(p=> p.x -= pipeSpeed); 
+        pipes = pipes.filter(p => p.x > -80);
+        
+        const birdRect = {x:50, y, w:30, h:22};
+        
+        for(let p of pipes){
+          if(birdRect.x < p.x + 60 && birdRect.x + birdRect.w > p.x) {
+              if(birdRect.y < p.top || birdRect.y + birdRect.h > p.top + p.gap) { 
+                  gameOver(); return; 
+              }
+          }
+          if(!p.scored && p.x + 60 < 50){ 
+              score++; p.scored=true; 
+          }
+        }
+        if(y > canvas.height - 22 || y < 0) { gameOver(); return; }
+        draw();
+      }
+      
+      function draw(){
+        ctx.fillStyle='#72c3ff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle='#0a0'; ctx.fillRect(0, canvas.height - 10, canvas.width, 10);
+        
+        pipes.forEach(p=>{ ctx.fillStyle='#0b3'; ctx.fillRect(p.x,0,60,p.top); ctx.fillRect(p.x,p.top + p.gap,60,canvas.height - (p.top + p.gap)); });
+        ctx.fillStyle='#ffea7f'; ctx.fillRect(50, y, 30, 22);
+        ctx.fillStyle='#000'; ctx.fillText('Score: '+score, 10, 20);
+      }
+      function flap(){ vy = -8; }
+      function gameOver() { clearInterval(tick); showAlert('Game Over! Score: '+score, () => { pushScore(APP.playerName, score, 'flappy'); closeGame(); }); }
+      const keyHandler = (e)=>{ if(e.key===' ') flap(); };
+      document.addEventListener('keydown', keyHandler);
+      container.addEventListener('click', () => flap());
+      window.GAME = { destroy(){ clearInterval(tick); document.removeEventListener('keydown', keyHandler); } };
+    }
+
+    /* 6) 2048 Implementation */
+    function init2048(container, mode){ /* ... Giữ nguyên init2048 ... */
+        let grid = newGrid(), score=0;
+        container.innerHTML = '<div><strong>2048</strong><div class="muted small">Use arrow keys to move</div></div>';
+        const board = document.createElement('div'); 
+        board.className = 'board2048';
+        container.appendChild(board);
+        const scoreEl = document.createElement('div'); scoreEl.className='muted small'; scoreEl.textContent='Score: 0'; container.appendChild(scoreEl);
+        renderGrid();
+        
+        function newGrid(){ const g=Array.from({length:4},()=>Array(4).fill(0)); randomTile(g); randomTile(g); return g; }
+        function randomTile(g){
+          const empt=[]; for(let r=0;r<4;r++) for(let c=0;c<4;c++) if(!g[r][c]) empt.push([r,c]);
+          if(empt.length===0) return; const [r,c] = empt[Math.floor(Math.random()*empt.length)]; g[r][c] = Math.random()<0.9?2:4;
+        }
+        function renderGrid(){
+          board.innerHTML=''; grid.flat().forEach(v=>{ const el=document.createElement('div'); el.className = 'tile2048'; el.textContent = v||''; el.style.backgroundColor = `rgba(255,255,255,${Math.log2(v||1)*0.05})`; board.appendChild(el); });
+          scoreEl.textContent = 'Score: '+score;
+        }
+        function move(dir){
+          const old = JSON.stringify(grid);
+          let g=grid.map(r=>r.slice()), gained=0;
+          for(let i=0;i<dirSteps(dir);i++) g=rotate(g);
+          for(let r=0;r<4;r++){
+            let row = g[r].filter(v=>v); for(let i=0;i<row.length-1;i++) if(row[i]===row[i+1]){ row[i]*=2; gained += row[i]; row.splice(i+1,1); }
+            while(row.length<4) row.push(0); g[r]=row;
+          }
+          for(let i=0;i<(4-dirSteps(dir)) % 4;i++) g=rotate(g);
+          if(JSON.stringify(g)!==old){ randomTile(g); grid=g; score+=gained; renderGrid(); if(checkWin(grid)){ showAlert('Bạn thắng! Score: '+score, () => {pushScore(APP.playerName, score, '2048'); closeGame();}); } }
+        }
+        function dirSteps(dir){ if(dir==='left') return 0; if(dir==='up') return 1; if(dir==='right') return 2; if(dir==='down') return 3; }
+        function rotate(m){ 
+            const n=Array.from({length:4},()=>Array(4).fill(0)); 
+            for(let r=0;r<4;r++) for(let c=0;c<4;c++) n[r][c]=m[3-c][r]; 
+            return n; 
+        }
+        function checkWin(g){ return g.some(r=>r.some(c=>c>=2048)); }
+        const onKey = e => { if(e.key.includes('Arrow')) move(e.key.replace('Arrow','').toLowerCase()); };
+        document.addEventListener('keydown', onKey);
+        window.GAME = { destroy(){ document.removeEventListener('keydown', onKey); } };
+    }
+    
     // --- Initial Load ---
     async function init(){
       if (firebaseActive) {
@@ -2101,6 +2405,11 @@
       applyTheme();
       refreshLeaderboardUI(); 
       setupEventListeners();
+      
+      // CHỈ KÍCH HOẠT CHAT TOÀN CẦU KHI TẢI XONG NẾU TÊN ĐÃ CÓ (hoặc nó sẽ được gọi lại trong btnStart)
+      if (firebaseActive && APP.playerName) {
+          setupGlobalChat();
+      }
     }
     
     init();
@@ -2113,5 +2422,3 @@
 <script src="/_vercel/speed-insights/script.js"></script>
 </body>
 </html>
-
-
