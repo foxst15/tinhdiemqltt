@@ -15,6 +15,7 @@
   - MODIFIED: Quiz now shows 6 shuffled questions.
   - FIX (CRITICAL): Resolved 'undefined' error in Tic-Tac-Toe PvP and Battleship PvP by ensuring all IDs are defined before Firebase update.
   - FIX: PvP auto-matching logic is now more robust, preventing players from getting stuck in their own lobbies.
+  - FIX (TTT Turn Logic): Ensured accurate turn switching and click permission check for Player O.
 -->
 <style>
   @keyframes background-pan {
@@ -1199,7 +1200,7 @@
       let y = canvas.height / 2, vy=0, pipes=[], score=0; // Bắt đầu ở giữa
       let tick = setInterval(loop, 30);
       
-      // Tạo ống đầu tiên xa hơn để tránh chết ngay lập tức
+      // Tạo ống đầu tiên xa hơn để tránh chết ngay lập lập tức
       pipes.push({x: canvas.width * 1.5, top: 150, gap: 100, scored: false});
 
       function loop(){
@@ -1429,17 +1430,18 @@
                  board[index] = playerMark;
                  render(); // Cập nhật local ngay lập tức
                  
+                 // SỬA LỖI: Logic chuyển lượt (dùng ternary operator an toàn)
                  const nextTurnId = (auth.currentUser.uid === pvpState.player1Id) 
-                                    ? (pvpState.player2Id || pvpState.player1Id) // Fallback to P1 if P2 ID is somehow missing
-                                    : (pvpState.player1Id || pvpState.player2Id); // Fallback to P2 if P1 ID is somehow missing
+                                    ? pvpState.player2Id 
+                                    : pvpState.player1Id;
 
-                 // Đảm bảo nextTurnId không bao giờ là undefined
-                 const finalNextTurnId = nextTurnId || (pvpState.player1Id || pvpState.player2Id) || null; // Dùng null nếu không tìm thấy ID nào
+                 // Đảm bảo nextTurnId không bao giờ là undefined/null (vì pvpState.player2Id đã được kiểm tra ở Guardrail)
+                 const finalNextTurnId = nextTurnId; 
 
                  // Đẩy lên Cloud
                  updateDoc(pvpGameRef, { 
                     board: JSON.stringify(board), 
-                    turn: finalNextTurnId // ĐÃ SỬA: nextTurnId luôn là một chuỗi ID hoặc null
+                    turn: finalNextTurnId // ĐÃ SỬA: nextTurnId luôn là một chuỗi ID hợp lệ
                  }).catch(err => {
                     console.error("Lỗi updateDoc TicTacToe:", err);
                     showAlert("Lỗi đồng bộ Cloud. Vui lòng kiểm tra Rules/kết nối.");
